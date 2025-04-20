@@ -42,6 +42,7 @@ npm install
 
 ### Step 1: Export your IMDb Watchlist
 Use a Node.js script (or Puppeteer) to extract your watchlist into JSON format.
+Check Out [IMDB Watchlist Export](https://github.com/all-i-hop/imdb-watchlist-export) for getting your IMDb watchlist data.
 
 ### Step 2: Place the file here:
 
