@@ -26,8 +26,8 @@ A sleek, responsive React + Tailwind web app for viewing and filtering your pers
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/imdb-organizer.git
-cd imdb-organizer
+git clone https://github.com/all-i-hop/imdb-firebase-organizer.git
+cd imdb-firebase-organizer
 ```
 
 ### 2. Install dependencies
