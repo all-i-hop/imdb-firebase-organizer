@@ -3,15 +3,17 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { auth, googleProvider } from "@/lib/firebaseConfig";
 import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
+import { useUserWatchlist } from "@/lib/useUserWatchlist";
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+
 
 export default function App() {
-  const [movies, setMovies] = useState([]);
+  const [user, setUser] = useState(null);
   const [search, setSearch] = useState("");
   const [genreFilter, setGenreFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [sortBy, setSortBy] = useState("rating");
   const [releaseStatus, setReleaseStatus] = useState("all");
-  const [user, setUser] = useState(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -20,12 +22,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    fetch("/watchlist_flat.json")
-      .then((res) => res.json())
-      .then(setMovies)
-      .catch(() => setMovies([]));
-  }, []);
+  const { watchlist, setWatchlist, loading } = useUserWatchlist(user?.uid);
 
   const sortMovies = (a, b) => {
     switch (sortBy) {
@@ -43,35 +40,33 @@ export default function App() {
   const isReleased = (movie) => {
     if (!movie.releaseDate) return false;
     const release = new Date(movie.releaseDate);
-    return release <= new Date();
+    return !isNaN(release) && release <= new Date();
   };
 
-  const filtered = movies
-    .filter(
-      (movie) =>
-        movie.title.toLowerCase().includes(search.toLowerCase()) &&
-        (genreFilter ? movie.genres.includes(genreFilter) : true) &&
-        (typeFilter ? movie.type === typeFilter : true) &&
-        (releaseStatus === "released"
-          ? isReleased(movie)
-          : releaseStatus === "unreleased"
-          ? !isReleased(movie)
-          : true)
+  const filtered = (watchlist || [])
+    .filter((movie) =>
+      (movie.title || "").toLowerCase().includes(search.toLowerCase()) &&
+      (genreFilter ? (movie.genres || "").includes(genreFilter) : true) &&
+      (typeFilter ? movie.type === typeFilter : true) &&
+      (releaseStatus === "released"
+        ? isReleased(movie)
+        : releaseStatus === "unreleased"
+        ? !isReleased(movie)
+        : true)
     )
     .sort(sortMovies);
 
   const uniqueGenres = Array.from(
-    new Set(movies.flatMap((m) => m.genres?.split(", ") || []))
+    new Set((watchlist || []).flatMap((m) => (m.genres || "").split(", ")))
   ).sort();
 
   const uniqueTypes = Array.from(
-    new Set(movies.map((m) => m.type).filter(Boolean))
+    new Set((watchlist || []).map((m) => m.type).filter(Boolean))
   ).sort();
 
   return (
     <div className="min-h-screen bg-[#f5f5f5] text-[#121212] px-4 py-8 font-sans">
       <div className="max-w-6xl mx-auto">
-        {/* Auth Section */}
         <div className="flex justify-end items-center mb-4">
           {user ? (
             <div className="flex gap-4 items-center">
@@ -93,14 +88,15 @@ export default function App() {
           )}
         </div>
 
-        {/* Only show app content if logged in */}
         {!user ? (
-          <p className="text-center text-gray-500">Please sign in to access your watchlist.</p>
+          <p className="text-center text-gray-500 mt-10">
+            Please sign in to view your watchlist.
+          </p>
+        ) : loading ? (
+          <p className="text-center mt-10 text-gray-500">Loading watchlist...</p>
         ) : (
           <>
             <h1 className="text-3xl font-bold mb-6 text-center">IMDb Watchlist</h1>
-
-            {/* Filters */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-8">
               <Input
                 placeholder="Search movies..."
@@ -114,9 +110,7 @@ export default function App() {
               >
                 <option value="">All Genres</option>
                 {uniqueGenres.map((g) => (
-                  <option key={g} value={g}>
-                    {g}
-                  </option>
+                  <option key={g} value={g}>{g}</option>
                 ))}
               </select>
               <select
@@ -126,9 +120,7 @@ export default function App() {
               >
                 <option value="">All Types</option>
                 {uniqueTypes.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
+                  <option key={t} value={t}>{t}</option>
                 ))}
               </select>
               <select
@@ -151,114 +143,54 @@ export default function App() {
               </select>
             </div>
 
-            {/* Watchlist Cards */}
-            <div className="space-y-6">
-              {filtered.map((movie, idx) => (
-                <Card
-                  key={idx}
-                  className="flex bg-white rounded-sm border border-gray-300 shadow p-4 gap-4"
-                >
-                  <img
-                    src={movie.poster}
-                    alt={`${movie.title} poster`}
-                    className="w-[48px] h-[72px] object-cover"
-                    loading="lazy"
-                  />
-                  <div className="flex-1">
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <h2 className="text-[16px] font-bold leading-tight">
-                        <a
-                          href={movie.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:underline text-[#121212]"
-                        >
-                          {idx + 1}. {movie.title}
-                        </a>
-                      </h2>
-                      {movie.year && (
-                        <span className="text-xs text-gray-600">{movie.year}</span>
-                      )}
-                      {movie.runtimeMinutes && (
-                        <span className="text-xs text-gray-600">
-                          • {Math.floor(movie.runtimeMinutes / 60)}h{" "}
-                          {movie.runtimeMinutes % 60}m
-                        </span>
-                      )}
-                      {movie.rating && (
-                        <span className="text-xs text-gray-600">• {movie.rating}</span>
-                      )}
+            {filtered.length === 0 ? (
+              <p className="text-center text-gray-500 mt-10">No movies found.</p>
+            ) : (
+              <div className="space-y-6">
+                {filtered.map((movie, idx) => (
+                  <Card key={idx} className="flex bg-white rounded-sm border border-gray-300 shadow p-4 gap-4">
+                    <img
+                      src={movie.poster}
+                      alt={`${movie.title} poster`}
+                      className="w-[48px] h-[72px] object-cover"
+                      loading="lazy"
+                    />
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h2 className="text-[16px] font-bold leading-tight">
+                          <a
+                            href={movie.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:underline text-[#121212]"
+                          >
+                            {idx + 1}. {movie.title}
+                          </a>
+                        </h2>
+                        {movie.year && <span className="text-xs text-gray-600">{movie.year}</span>}
+                        {movie.runtimeMinutes && (
+                          <span className="text-xs text-gray-600">
+                            • {Math.floor(movie.runtimeMinutes / 60)}h {movie.runtimeMinutes % 60}m
+                          </span>
+                        )}
+                        {movie.rating && <span className="text-xs text-gray-600">• {movie.rating}</span>}
+                      </div>
+                      {movie.plot && <p className="text-sm text-gray-700 mb-1">{movie.plot}</p>}
+                      <div className="flex flex-wrap gap-4 text-sm mb-1 items-center">
+                        {movie.imdbRating && (
+                          <span className="text-yellow-600 font-semibold">
+                            ⭐ {movie.imdbRating}
+                            {movie.voteCount && (
+                              <span className="text-gray-500 font-normal"> ({movie.voteCount.toLocaleString()})</span>
+                            )}
+                          </span>
+                        )}
+                        {movie.genres && <span className="text-gray-600">{movie.genres}</span>}
+                      </div>
                     </div>
-
-                    {movie.plot && (
-                      <p className="text-sm text-gray-700 mb-1">{movie.plot}</p>
-                    )}
-
-                    <div className="flex flex-wrap gap-4 text-sm mb-1 items-center">
-                      {movie.imdbRating && (
-                        <span className="text-yellow-600 font-semibold">
-                          ⭐ {movie.imdbRating}
-                          {movie.voteCount && (
-                            <span className="text-gray-500 font-normal">
-                              {" "}
-                              ({movie.voteCount.toLocaleString()})
-                            </span>
-                          )}
-                        </span>
-                      )}
-                      {movie.genres && <span className="text-gray-600">{movie.genres}</span>}
-                    </div>
-
-                    <div className="text-sm text-gray-800 space-y-0.5">
-                      {movie.directors && (
-                        <p>
-                          <span className="font-semibold">Director:</span>{" "}
-                          {Array.isArray(movie.directors)
-                            ? movie.directors.map((d, i) => (
-                                <span
-                                  key={i}
-                                  className="text-blue-600 hover:underline"
-                                >
-                                  {d}
-                                  {i < movie.directors.length - 1 ? ", " : ""}
-                                </span>
-                              ))
-                            : movie.directors}
-                        </p>
-                      )}
-                      {movie.cast && (
-                        <p>
-                          <span className="font-semibold">Stars:</span>{" "}
-                          {movie.cast.split(", ").map((actor, i) => (
-                            <span
-                              key={i}
-                              className="text-blue-600 hover:underline"
-                            >
-                              {actor}
-                              {i < movie.cast.split(", ").length - 1 ? ", " : ""}
-                            </span>
-                          ))}
-                        </p>
-                      )}
-                    </div>
-
-                    <a
-                      href={movie.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block text-xs text-blue-500 hover:underline mt-2"
-                    >
-                      View on IMDb →
-                    </a>
-                  </div>
-                </Card>
-              ))}
-            </div>
-
-            {filtered.length === 0 && (
-              <p className="mt-10 text-center text-gray-500">
-                No movies match your filters.
-              </p>
+                  </Card>
+                ))}
+              </div>
             )}
           </>
         )}

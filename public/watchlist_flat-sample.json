@@ -1,0 +1,40 @@
+[
+  {
+    "title": "Zack Snyder's Justice League",
+    "originalTitle": "Zack Snyder's Justice League",
+    "year": 2021,
+    "type": "Movie",
+    "imdbId": "tt12361974",
+    "link": "https://www.imdb.com/title/tt12361974/",
+    "poster": "https://m.media-amazon.com/images/M/MV5BNDA0MzM5YTctZTU2My00NGQ5LWE2NTEtNDM0MjZmMDBkOTZkXkEyXkFqcGc@._V1_.jpg",
+    "genres": "Action, Adventure, Fantasy",
+    "rating": "R",
+    "runtimeMinutes": 242,
+    "plot": "Determined to ensure that Superman's ultimate sacrifice wasn't in vain, Bruce Wayne recruits a team of metahumans to protect the world from an approaching threat of catastrophic proportions.",
+    "imdbRating": 7.9,
+    "voteCount": 454859,
+    "releaseDate": "2021-03-18",
+    "status": "Released",
+    "directors": "Zack Snyder",
+    "cast": "Henry Cavill, Ben Affleck, Gal Gadot, Amy Adams"
+  },
+  {
+    "title": "Soul",
+    "originalTitle": "Soul",
+    "year": 2020,
+    "type": "Movie",
+    "imdbId": "tt2948372",
+    "link": "https://www.imdb.com/title/tt2948372/",
+    "poster": "https://m.media-amazon.com/images/M/MV5BZTZkYjA5MDEtMjY1ZC00ODk5LThjOTUtZDYxODEzYWNjMTU2XkEyXkFqcGc@._V1_.jpg",
+    "genres": "Animation, Adventure, Comedy",
+    "rating": "PG",
+    "runtimeMinutes": 100,
+    "plot": "Joe is a middle-school band teacher whose life hasn't quite gone the way he expected. His true passion is jazz. But when he travels to another realm to help someone find their passion, he soon discovers what it means to have soul.",
+    "imdbRating": 8,
+    "voteCount": 406513,
+    "releaseDate": "2020-11-29",
+    "status": "Released",
+    "directors": "Pete Docter, Kemp Powers",
+    "cast": "Jamie Foxx, Tina Fey, Graham Norton, Rachel House"
+  }
+] 
