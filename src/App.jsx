@@ -6,7 +6,6 @@ import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
 import { useUserWatchlist } from "@/lib/useUserWatchlist";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 
-
 export default function App() {
   const [user, setUser] = useState(null);
   const [search, setSearch] = useState("");
@@ -16,9 +15,7 @@ export default function App() {
   const [releaseStatus, setReleaseStatus] = useState("all");
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
+    const unsubscribe = onAuthStateChanged(auth, setUser);
     return () => unsubscribe();
   }, []);
 
