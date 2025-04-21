@@ -10,7 +10,7 @@ export function useUserWatchlist(uid) {
     const load = async () => {
       if (!uid) {
         try {
-          const res = await fetch("/imdb_watchlist-sample.json");
+          const res = await fetch("/watchlist_flat-sample.json");
           if (!res.ok) {
             throw new Error("Failed to load fallback: " + res.status);
           }
@@ -34,7 +34,7 @@ export function useUserWatchlist(uid) {
         } else {
           // fallback for new users without a saved list
           try {
-            const res = await fetch("/imdb_watchlist-sample.json");
+            const res = await fetch("/watchlist_flat-sample.json");
             if (!res.ok) throw new Error("Fallback fetch failed");
             const fallback = await res.json();
             setWatchlist(fallback);
