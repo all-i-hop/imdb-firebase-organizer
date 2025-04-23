@@ -3,6 +3,8 @@ import { db } from "@/lib/firebaseConfig";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/lib/firebaseConfig";
+import { setDoc } from "firebase/firestore";
+
 
 const OMDB_API_KEY = import.meta.env.VITE_OMDB_API_KEY;
 
@@ -18,11 +20,7 @@ export default function SearchToAdd() {
     try {
       const res = await fetch(`https://www.omdbapi.com/?apikey=${OMDB_API_KEY}&s=${encodeURIComponent(query)}`);
       const data = await res.json();
-      if (data.Search) {
-        setResults(data.Search);
-      } else {
-        setResults([]);
-      }
+      setResults(data.Search || []);
     } catch (err) {
       console.error("Search error:", err);
       setResults([]);
@@ -37,6 +35,10 @@ export default function SearchToAdd() {
     const detailsRes = await fetch(`https://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${imdbID}`);
     const movie = await detailsRes.json();
 
+    const rtRating = movie.Ratings?.find(r => r.Source === "Rotten Tomatoes")?.Value || null;
+    const imdbRating = movie.Ratings?.find(r => r.Source === "Internet Movie Database")?.Value || null;
+    const metacriticRating = movie.Ratings?.find(r => r.Source === "Metacritic")?.Value || null;
+
     const ref = doc(db, "watchlists", user.uid);
     const docSnap = await getDoc(ref);
     const current = docSnap.exists() ? docSnap.data().items || [] : [];
@@ -49,6 +51,9 @@ export default function SearchToAdd() {
       year: movie.Year,
       genres: movie.Genre,
       imdbRating: parseFloat(movie.imdbRating),
+      imdbDisplay: imdbRating,
+      rtRating: rtRating,
+      metacriticRating: metacriticRating,
       runtimeMinutes: parseInt(movie.Runtime),
       cast: movie.Actors,
       link: `https://www.imdb.com/title/${movie.imdbID}/`,
@@ -60,9 +65,9 @@ export default function SearchToAdd() {
       seen: false,
     };
 
-    await updateDoc(ref, {
-      items: [...current, item],
-    });
+    await setDoc(ref, {
+      items: [...current, item]
+    }, { merge: true});
 
     alert("Added to your watchlist!");
   };

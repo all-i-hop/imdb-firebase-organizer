@@ -1,123 +1,87 @@
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth } from "@/lib/firebaseConfig";
 import { useEffect, useState } from "react";
-import { auth, db } from "@/lib/firebaseConfig";
-import { onAuthStateChanged } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
-import { useUserWatchlist } from "@/lib/useUserWatchlist";
-import Toast from "@/components/ui/toast";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebaseConfig";
+
+const OMDB_API_KEY = import.meta.env.VITE_OMDB_API_KEY;
 
 export default function Profile() {
-  const [user, setUser] = useState(null);
-  const [toast, setToast] = useState(null);
-  const [preview, setPreview] = useState(null);
-  const { setWatchlist } = useUserWatchlist(user?.uid);
+  const [user] = useAuthState(auth);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, setUser);
-    return () => unsub();
-  }, []);
+  const migrateRatings = async (uid) => {
+    const ref = doc(db, "watchlists", uid);
+    const docSnap = await getDoc(ref);
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    let items = [];
 
-    try {
-      const text = await file.text();
-      const json = JSON.parse(text);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      items = data.items || [];
+    } else {
+      // Fallback: load sample JSON from public
+      try {
+        const res = await fetch("/watchlist_flat-sample.json");
+        const json = await res.json();
+        items = json;
+      } catch (e) {
+        console.error("❌ Failed to load fallback JSON", e);
+        alert("Failed to migrate — no watchlist found.");
+        return;
+      }
+    }
 
-      if (!Array.isArray(json)) {
-        throw new Error("Invalid format: expected an array.");
+    const updated = [];
+
+    for (const movie of items) {
+      if (movie.rtRating && movie.imdbDisplay && movie.metacriticRating) {
+        updated.push(movie);
+        continue;
       }
 
-      setPreview(json);
-    } catch (err) {
-      setToast({ message: `❌ Invalid file: ${err.message}`, type: "error" });
-    }
-  };
+      try {
+        const imdbID = movie.imdbID || movie.imdbId;
+        if (!imdbID) continue;
 
-  const sanitizeEntry = (entry) => {
-    return {
-      ...entry,
-      imdbRating: entry.imdbRating === "" ? null : Number(entry.imdbRating),
-      runtimeMinutes: entry.runtimeMinutes === "" ? null : Number(entry.runtimeMinutes),
-      voteCount: entry.voteCount === "" ? 0 : Number(entry.voteCount),
-    };
-  };
+        const res = await fetch(`https://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${imdbID}`);
+        const full = await res.json();
 
-  const handleImportConfirm = async () => {
-    if (!user?.uid || !preview) {
-      setToast({ message: "❌ User not signed in or no file selected.", type: "error" });
-      return;
-    }
-  
-    try {
-      const sanitized = preview.map(sanitizeEntry);
-      const ref = doc(db, "watchlists", user.uid);
-  
-      await setDoc(ref, {
-        items: sanitized,
-        owner: {
-          uid: user.uid,
-          name: user.displayName || null,
-          email: user.email || null,
-        },
-        importedAt: new Date().toISOString()
-      });
-  
-      setWatchlist(sanitized);
-      setPreview(null);
-      setToast({ message: "✅ Watchlist imported successfully.", type: "success" });
-    } catch (err) {
-      setToast({ message: `❌ Failed to save: ${err.message}`, type: "error" });
-    }
-  };
-  
+        const imdbDisplay = full.Ratings?.find(r => r.Source === "Internet Movie Database")?.Value || null;
+        const rtRating = full.Ratings?.find(r => r.Source === "Rotten Tomatoes")?.Value || null;
+        const metacriticRating = full.Ratings?.find(r => r.Source === "Metacritic")?.Value || null;
 
-  if (!user) {
-    return <p className="text-center mt-10">Please sign in to manage your profile.</p>;
-  }
+        updated.push({
+          ...movie,
+          imdbDisplay: movie.imdbDisplay || imdbDisplay,
+          rtRating: movie.rtRating || rtRating,
+          metacriticRating: movie.metacriticRating || metacriticRating,
+        });
+      } catch (err) {
+        console.warn("Failed to update:", movie.title, err);
+        updated.push(movie); // fallback to original
+      }
+    }
+
+    await setDoc(ref, { items: updated }, { merge: true });
+    alert("✅ Migration complete! Ratings updated.");
+  };
 
   return (
-    <div className="max-w-xl mx-auto mt-10 bg-white shadow p-6 rounded space-y-4">
-      <h1 className="text-2xl font-bold">👤 Profile</h1>
-      <p><strong>Name:</strong> {user.displayName}</p>
-      <p><strong>Email:</strong> {user.email}</p>
-
-      <div className="mt-6">
-        <label className="block font-medium mb-1">📤 Import Watchlist (JSON)</label>
-        <input
-          type="file"
-          accept=".json"
-          onChange={handleFileChange}
-          className="border border-gray-300 rounded px-2 py-1 w-full"
-        />
-      </div>
-
-      {preview && (
-        <div className="bg-gray-50 p-4 border rounded mt-4">
-          <h2 className="text-sm font-semibold mb-2">Preview ({preview.length} titles)</h2>
-          <ul className="text-sm max-h-40 overflow-auto">
-            {preview.slice(0, 5).map((movie, i) => (
-              <li key={i} className="text-gray-700">
-                {movie.title} {movie.year ? `(${movie.year})` : ""}
-              </li>
-            ))}
-            {preview.length > 5 && <li>...and more</li>}
-          </ul>
+    <div className="max-w-2xl mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-4">👤 Profile</h1>
+      {user ? (
+        <>
+          <p className="mb-2">Signed in as <strong>{user.email}</strong></p>
           <button
-            onClick={handleImportConfirm}
-            className="mt-4 bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700"
+            onClick={() => migrateRatings(user.uid)}
+            className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
           >
-            ✅ Confirm Import
+            Migrate or Initialize Watchlist (with Ratings)
           </button>
-        </div>
-      )}
-
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
+        </>
+      ) : (
+        <p>Please log in to manage your profile.</p>
       )}
     </div>
   );

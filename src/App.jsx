@@ -147,28 +147,71 @@ export default function App() {
               <p className="text-center text-gray-500 mt-10">No movies found.</p>
             ) : (
               <div className="space-y-6">
-                {filtered.map((movie, idx) => (
-                  <Card key={idx} className="flex bg-white rounded-sm border shadow p-4 gap-4">
-                    <img src={movie.poster} alt={`${movie.title} poster`} className="w-[48px] h-[72px] object-cover" />
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <h2 className="font-bold text-[16px]">
-                          <a href={movie.link} target="_blank" rel="noopener noreferrer" className="hover:underline">{idx + 1}. {movie.title}</a>
-                        </h2>
-                        {movie.year && <span className="text-xs text-gray-600">{movie.year}</span>}
-                      </div>
-                      {movie.plot && <p className="text-sm text-gray-700 mb-1">{movie.plot}</p>}
-                      <div className="flex gap-4 text-sm mb-1">
-                        {movie.imdbRating && <span className="text-yellow-600 font-semibold">⭐ {movie.imdbRating}</span>}
-                        {movie.genres && <span className="text-gray-600">{movie.genres}</span>}
-                      </div>
-                      <label className="text-sm flex items-center gap-2 mt-2">
-                        <input type="checkbox" checked={movie.seen || false} onChange={() => toggleSeen(movie)} />
-                        Mark as Seen
-                      </label>
-                    </div>
-                  </Card>
-                ))}
+{filtered.map((movie, idx) => (
+  <Card key={idx} className="flex bg-white rounded-sm border shadow p-4 gap-4">
+    <img
+      src={movie.poster}
+      alt={`${movie.title} poster`}
+      className="w-[48px] h-[72px] object-cover"
+    />
+    <div className="flex-1">
+      <div className="flex flex-wrap items-center gap-2 mb-1">
+        <h2 className="text-[16px] font-bold leading-tight">
+          <a
+            href={movie.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline text-[#121212]"
+          >
+            {idx + 1}. {movie.title}
+          </a>
+        </h2>
+        {movie.year && (
+          <span className="text-xs text-gray-600">{movie.year}</span>
+        )}
+        {movie.runtimeMinutes && (
+          <span className="text-xs text-gray-600">
+            • {Math.floor(movie.runtimeMinutes / 60)}h {movie.runtimeMinutes % 60}m
+          </span>
+        )}
+      </div>
+
+      <div className="flex gap-2 text-sm mb-1 items-center flex-wrap">
+        {movie.imdbDisplay && (
+          <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs font-semibold">
+            IMDb: {movie.imdbDisplay}
+          </span>
+        )}
+        {movie.rtRating && (
+          <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-semibold">
+            🍅 RT: {movie.rtRating}
+          </span>
+        )}
+        {movie.metacriticRating && (
+          <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-semibold">
+            MC: {movie.metacriticRating}
+          </span>
+        )}
+        {movie.genres && (
+          <span className="text-gray-600 text-xs">{movie.genres}</span>
+        )}
+      </div>
+
+      {movie.plot && (
+        <p className="text-sm text-gray-700 mb-2">{movie.plot}</p>
+      )}
+
+      <label className="inline-flex items-center gap-2 mt-2 text-sm">
+        <input
+          type="checkbox"
+          checked={movie.seen || false}
+          onChange={() => toggleSeen(movie)}
+        />
+        Mark as Seen
+      </label>
+    </div>
+  </Card>
+))}
               </div>
             )}
           </>
