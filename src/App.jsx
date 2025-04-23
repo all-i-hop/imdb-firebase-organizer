@@ -5,6 +5,8 @@ import { auth, googleProvider, db } from "@/lib/firebaseConfig";
 import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
 import { useUserWatchlist } from "@/lib/useUserWatchlist.jsx";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
+import { Link } from "react-router-dom";
+
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -86,6 +88,9 @@ export default function App() {
           {user ? (
             <div className="flex gap-4 items-center">
               <span className="text-sm text-gray-700">Hi, {user.displayName}</span>
+              <Link to="/add" className="text-sm text-green-600 border px-2 py-1 rounded hover:bg-green-100">
+                ➕ Add Movie
+              </Link>
               <button
                 onClick={() => signOut(auth)}
                 className="text-sm text-red-600 border px-2 py-1 rounded hover:bg-red-100"

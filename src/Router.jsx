@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import App from "@/App";
 import Profile from "@/pages/Profile";
+import SearchToAdd from "@/components/SearchToAdd";
+
 
 export default function MainRouter() {
   return (
@@ -12,6 +14,7 @@ export default function MainRouter() {
       <Routes>
         <Route path="/" element={<App />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/add" element={<SearchToAdd />} />
       </Routes>
     </Router>
   );
