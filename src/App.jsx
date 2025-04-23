@@ -7,7 +7,6 @@ import { useUserWatchlist } from "@/lib/useUserWatchlist.jsx";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { Link } from "react-router-dom";
 
-
 export default function App() {
   const [user, setUser] = useState(null);
   const [search, setSearch] = useState("");
@@ -16,6 +15,7 @@ export default function App() {
   const [sortBy, setSortBy] = useState("rating");
   const [releaseStatus, setReleaseStatus] = useState("all");
   const [hideSeen, setHideSeen] = useState(false);
+  const [recentOnly, setRecentOnly] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, setUser);
@@ -48,6 +48,8 @@ export default function App() {
         return (b.runtimeMinutes || 0) - (a.runtimeMinutes || 0);
       case "title":
         return a.title.localeCompare(b.title);
+      case "recent":
+        return new Date(b.addedAt || 0) - new Date(a.addedAt || 0);
       default:
         return 0;
     }
@@ -57,6 +59,14 @@ export default function App() {
     if (!movie.releaseDate) return false;
     const release = new Date(movie.releaseDate);
     return !isNaN(release) && release <= new Date();
+  };
+
+  const isRecent = (dateStr) => {
+    if (!dateStr) return false;
+    const added = new Date(dateStr);
+    const now = new Date();
+    const diffDays = (now - added) / (1000 * 60 * 60 * 24);
+    return diffDays <= 30;
   };
 
   const filtered = (watchlist || [])
@@ -69,7 +79,8 @@ export default function App() {
         : releaseStatus === "unreleased"
         ? !isReleased(movie)
         : true) &&
-      (!hideSeen || !movie.seen)
+      (!hideSeen || !movie.seen) &&
+      (!recentOnly || isRecent(movie.addedAt))
     )
     .sort(sortMovies);
 
@@ -131,22 +142,30 @@ export default function App() {
                 <option value="rating">Sort by Rating</option>
                 <option value="runtime">Sort by Runtime</option>
                 <option value="title">Sort by Title</option>
+                <option value="recent">Sort by Recently Added</option>
               </select>
               <select className="border rounded p-2 bg-white" value={releaseStatus} onChange={(e) => setReleaseStatus(e.target.value)}>
                 <option value="all">All Releases</option>
                 <option value="released">Released Only</option>
                 <option value="unreleased">Unreleased Only</option>
               </select>
-              <label className="text-sm flex items-center gap-2">
-                <input type="checkbox" checked={hideSeen} onChange={() => setHideSeen(!hideSeen)} />
-                Hide Seen
-              </label>
+              <div className="flex flex-col gap-1 text-sm">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={hideSeen} onChange={() => setHideSeen(!hideSeen)} />
+                  Hide Seen
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={recentOnly} onChange={() => setRecentOnly(!recentOnly)} />
+                  Recently Added (30d)
+                </label>
+              </div>
             </div>
 
             {filtered.length === 0 ? (
               <p className="text-center text-gray-500 mt-10">No movies found.</p>
             ) : (
               <div className="space-y-6">
+                
 {filtered.map((movie, idx) => (
   <Card key={idx} className="flex bg-white rounded-sm border shadow p-4 gap-4">
     <img
@@ -166,16 +185,13 @@ export default function App() {
             {idx + 1}. {movie.title}
           </a>
         </h2>
-        {movie.year && (
-          <span className="text-xs text-gray-600">{movie.year}</span>
-        )}
+        {movie.year && <span className="text-xs text-gray-600">{movie.year}</span>}
         {movie.runtimeMinutes && (
           <span className="text-xs text-gray-600">
             • {Math.floor(movie.runtimeMinutes / 60)}h {movie.runtimeMinutes % 60}m
           </span>
         )}
       </div>
-
       <div className="flex gap-2 text-sm mb-1 items-center flex-wrap">
         {movie.imdbDisplay && (
           <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs font-semibold">
@@ -196,11 +212,9 @@ export default function App() {
           <span className="text-gray-600 text-xs">{movie.genres}</span>
         )}
       </div>
-
       {movie.plot && (
         <p className="text-sm text-gray-700 mb-2">{movie.plot}</p>
       )}
-
       <label className="inline-flex items-center gap-2 mt-2 text-sm">
         <input
           type="checkbox"
@@ -212,6 +226,7 @@ export default function App() {
     </div>
   </Card>
 ))}
+
               </div>
             )}
           </>

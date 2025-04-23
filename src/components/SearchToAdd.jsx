@@ -63,6 +63,7 @@ export default function SearchToAdd() {
       imdbID: movie.imdbID,
       voteCount: parseInt(movie.imdbVotes.replace(/,/g, "")) || 0,
       seen: false,
+      addedAt: new Date().toISOString(),
     };
 
     await setDoc(ref, {
