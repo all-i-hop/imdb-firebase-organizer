@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { auth, googleProvider } from "@/lib/firebaseConfig";
+import { auth, googleProvider, db } from "@/lib/firebaseConfig";
 import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
-import { useUserWatchlist } from "@/lib/useUserWatchlist";
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import { useUserWatchlist } from "@/lib/useUserWatchlist.jsx";
+import { doc, updateDoc, getDoc } from "firebase/firestore";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -13,6 +13,7 @@ export default function App() {
   const [typeFilter, setTypeFilter] = useState("");
   const [sortBy, setSortBy] = useState("rating");
   const [releaseStatus, setReleaseStatus] = useState("all");
+  const [hideSeen, setHideSeen] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, setUser);
@@ -20,6 +21,22 @@ export default function App() {
   }, []);
 
   const { watchlist, setWatchlist, loading } = useUserWatchlist(user?.uid);
+
+  const toggleSeen = async (movie) => {
+    if (!user?.uid) return;
+
+    const ref = doc(db, "watchlists", user.uid);
+    const docSnap = await getDoc(ref);
+    if (!docSnap.exists()) return;
+
+    const data = docSnap.data();
+    const updatedItems = data.items.map((m) =>
+      m.title === movie.title ? { ...m, seen: !m.seen } : m
+    );
+
+    await updateDoc(ref, { items: updatedItems });
+    setWatchlist(updatedItems);
+  };
 
   const sortMovies = (a, b) => {
     switch (sortBy) {
@@ -49,7 +66,8 @@ export default function App() {
         ? isReleased(movie)
         : releaseStatus === "unreleased"
         ? !isReleased(movie)
-        : true)
+        : true) &&
+      (!hideSeen || !movie.seen)
     )
     .sort(sortMovies);
 
@@ -94,50 +112,30 @@ export default function App() {
         ) : (
           <>
             <h1 className="text-3xl font-bold mb-6 text-center">IMDb Watchlist</h1>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-8">
-              <Input
-                placeholder="Search movies..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              <select
-                className="border border-gray-300 rounded p-2 bg-white"
-                value={genreFilter}
-                onChange={(e) => setGenreFilter(e.target.value)}
-              >
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6 mb-8">
+              <Input placeholder="Search movies..." value={search} onChange={(e) => setSearch(e.target.value)} />
+              <select className="border rounded p-2 bg-white" value={genreFilter} onChange={(e) => setGenreFilter(e.target.value)}>
                 <option value="">All Genres</option>
-                {uniqueGenres.map((g) => (
-                  <option key={g} value={g}>{g}</option>
-                ))}
+                {uniqueGenres.map((g) => <option key={g} value={g}>{g}</option>)}
               </select>
-              <select
-                className="border border-gray-300 rounded p-2 bg-white"
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-              >
+              <select className="border rounded p-2 bg-white" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
                 <option value="">All Types</option>
-                {uniqueTypes.map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
+                {uniqueTypes.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
-              <select
-                className="border border-gray-300 rounded p-2 bg-white"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-              >
+              <select className="border rounded p-2 bg-white" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
                 <option value="rating">Sort by Rating</option>
                 <option value="runtime">Sort by Runtime</option>
                 <option value="title">Sort by Title</option>
               </select>
-              <select
-                className="border border-gray-300 rounded p-2 bg-white"
-                value={releaseStatus}
-                onChange={(e) => setReleaseStatus(e.target.value)}
-              >
+              <select className="border rounded p-2 bg-white" value={releaseStatus} onChange={(e) => setReleaseStatus(e.target.value)}>
                 <option value="all">All Releases</option>
                 <option value="released">Released Only</option>
                 <option value="unreleased">Unreleased Only</option>
               </select>
+              <label className="text-sm flex items-center gap-2">
+                <input type="checkbox" checked={hideSeen} onChange={() => setHideSeen(!hideSeen)} />
+                Hide Seen
+              </label>
             </div>
 
             {filtered.length === 0 ? (
@@ -145,45 +143,24 @@ export default function App() {
             ) : (
               <div className="space-y-6">
                 {filtered.map((movie, idx) => (
-                  <Card key={idx} className="flex bg-white rounded-sm border border-gray-300 shadow p-4 gap-4">
-                    <img
-                      src={movie.poster}
-                      alt={`${movie.title} poster`}
-                      className="w-[48px] h-[72px] object-cover"
-                      loading="lazy"
-                    />
+                  <Card key={idx} className="flex bg-white rounded-sm border shadow p-4 gap-4">
+                    <img src={movie.poster} alt={`${movie.title} poster`} className="w-[48px] h-[72px] object-cover" />
                     <div className="flex-1">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <h2 className="text-[16px] font-bold leading-tight">
-                          <a
-                            href={movie.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hover:underline text-[#121212]"
-                          >
-                            {idx + 1}. {movie.title}
-                          </a>
+                        <h2 className="font-bold text-[16px]">
+                          <a href={movie.link} target="_blank" rel="noopener noreferrer" className="hover:underline">{idx + 1}. {movie.title}</a>
                         </h2>
                         {movie.year && <span className="text-xs text-gray-600">{movie.year}</span>}
-                        {movie.runtimeMinutes && (
-                          <span className="text-xs text-gray-600">
-                            • {Math.floor(movie.runtimeMinutes / 60)}h {movie.runtimeMinutes % 60}m
-                          </span>
-                        )}
-                        {movie.rating && <span className="text-xs text-gray-600">• {movie.rating}</span>}
                       </div>
                       {movie.plot && <p className="text-sm text-gray-700 mb-1">{movie.plot}</p>}
-                      <div className="flex flex-wrap gap-4 text-sm mb-1 items-center">
-                        {movie.imdbRating && (
-                          <span className="text-yellow-600 font-semibold">
-                            ⭐ {movie.imdbRating}
-                            {movie.voteCount && (
-                              <span className="text-gray-500 font-normal"> ({movie.voteCount.toLocaleString()})</span>
-                            )}
-                          </span>
-                        )}
+                      <div className="flex gap-4 text-sm mb-1">
+                        {movie.imdbRating && <span className="text-yellow-600 font-semibold">⭐ {movie.imdbRating}</span>}
                         {movie.genres && <span className="text-gray-600">{movie.genres}</span>}
                       </div>
+                      <label className="text-sm flex items-center gap-2 mt-2">
+                        <input type="checkbox" checked={movie.seen || false} onChange={() => toggleSeen(movie)} />
+                        Mark as Seen
+                      </label>
                     </div>
                   </Card>
                 ))}
