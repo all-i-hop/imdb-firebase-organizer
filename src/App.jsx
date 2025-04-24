@@ -1,3 +1,4 @@
+// Full working App.jsx with all filters restored and clickable title detail routing
 import { useEffect, useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -12,14 +13,13 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [search, setSearch] = useState("");
   const [selectedGenres, setSelectedGenres] = useState([]);
-  const [typeFilter, setTypeFilter] = useState("");
-  const [showGenres, setShowGenres] = useState(false);
+  const [selectedTypes, setSelectedTypes] = useState([]);
   const [sortBy, setSortBy] = useState("rating");
   const [releaseStatus, setReleaseStatus] = useState("all");
   const [hideSeen, setHideSeen] = useState(false);
   const [recentOnly, setRecentOnly] = useState(false);
   const [smartResults, setSmartResults] = useState([]);
-  const [selectedTypes, setSelectedTypes] = useState([]);
+  const [showGenres, setShowGenres] = useState(false);
   const [showTypes, setShowTypes] = useState(false);
 
   const genresRef = useRef();
@@ -27,22 +27,14 @@ export default function App() {
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (genresRef.current && !genresRef.current.contains(e.target)) {
-        setShowGenres(false);
-      }
-      if (typesRef.current && !typesRef.current.contains(e.target)) {
-        setShowTypes(false);
-      }
+      if (genresRef.current && !genresRef.current.contains(e.target)) setShowGenres(false);
+      if (typesRef.current && !typesRef.current.contains(e.target)) setShowTypes(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, setUser);
-    return () => unsubscribe();
-  }, []);
-
+  useEffect(() => onAuthStateChanged(auth, setUser), []);
   const { watchlist, setWatchlist, loading } = useUserWatchlist(user?.uid);
 
   const toggleSeen = async (movie) => {
@@ -50,44 +42,25 @@ export default function App() {
     const ref = doc(db, "watchlists", user.uid);
     const docSnap = await getDoc(ref);
     if (!docSnap.exists()) return;
-
-    const data = docSnap.data();
-    const updatedItems = data.items.map((m) =>
+    const updatedItems = docSnap.data().items.map((m) =>
       m.title === movie.title ? { ...m, seen: !m.seen } : m
     );
-
     await updateDoc(ref, { items: updatedItems });
     setWatchlist(updatedItems);
   };
 
   const sortMovies = (a, b) => {
     switch (sortBy) {
-      case "rating":
-        return (b.imdbRating || 0) - (a.imdbRating || 0);
-      case "runtime":
-        return (b.runtimeMinutes || 0) - (a.runtimeMinutes || 0);
-      case "title":
-        return a.title.localeCompare(b.title);
-      case "recent":
-        return new Date(b.addedAt || 0) - new Date(a.addedAt || 0);
-      default:
-        return 0;
+      case "rating": return (b.imdbRating || 0) - (a.imdbRating || 0);
+      case "runtime": return (b.runtimeMinutes || 0) - (a.runtimeMinutes || 0);
+      case "title": return a.title.localeCompare(b.title);
+      case "recent": return new Date(b.addedAt || 0) - new Date(a.addedAt || 0);
+      default: return 0;
     }
   };
 
-  const isReleased = (movie) => {
-    if (!movie.releaseDate) return false;
-    const release = new Date(movie.releaseDate);
-    return !isNaN(release) && release <= new Date();
-  };
-
-  const isRecent = (dateStr) => {
-    if (!dateStr) return false;
-    const added = new Date(dateStr);
-    const now = new Date();
-    const diffDays = (now - added) / (1000 * 60 * 60 * 24);
-    return diffDays <= 30;
-  };
+  const isReleased = (movie) => new Date(movie.releaseDate) <= new Date();
+  const isRecent = (d) => d && (new Date() - new Date(d)) / 86400000 <= 30;
 
   const clearFilters = () => {
     setSelectedGenres([]);
@@ -98,23 +71,17 @@ export default function App() {
     setRecentOnly(false);
   };
 
-  const filtered = (watchlist || [])
-    .filter((movie) =>
-      (movie.title || "").toLowerCase().includes(search.toLowerCase()) &&
-      (selectedGenres.length === 0 || selectedGenres.some(g => (movie.genres || "").includes(g))) &&
-      (selectedTypes.length === 0 || selectedTypes.includes(movie.type)) &&
-      (releaseStatus === "released"
-        ? isReleased(movie)
-        : releaseStatus === "unreleased"
-        ? !isReleased(movie)
-        : true) &&
-      (!hideSeen || !movie.seen) &&
-      (!recentOnly || isRecent(movie.addedAt))
-    )
-    .sort(sortMovies);
+  const filtered = (watchlist || []).filter((movie) =>
+    (movie.title || "").toLowerCase().includes(search.toLowerCase()) &&
+    (selectedGenres.length === 0 || selectedGenres.some(g => (movie.genres || "").includes(g))) &&
+    (selectedTypes.length === 0 || selectedTypes.includes(movie.type)) &&
+    (releaseStatus === "released" ? isReleased(movie) : releaseStatus === "unreleased" ? !isReleased(movie) : true) &&
+    (!hideSeen || !movie.seen) &&
+    (!recentOnly || isRecent(movie.addedAt))
+  ).sort(sortMovies);
 
-  const uniqueGenres = Array.from(new Set((watchlist || []).flatMap((m) => (m.genres || "").split(", ")))).sort();
-  const uniqueTypes = Array.from(new Set((watchlist || []).map((m) => m.type).filter(Boolean))).sort();
+  const uniqueGenres = Array.from(new Set((watchlist || []).flatMap(m => (m.genres || "").split(", ")))).sort();
+  const uniqueTypes = Array.from(new Set((watchlist || []).map(m => m.type).filter(Boolean))).sort();
 
   const displayList = smartResults.length ? smartResults : filtered;
 
@@ -133,17 +100,13 @@ export default function App() {
           )}
         </div>
 
-        {!user ? (
-          <p className="text-center text-gray-500 mt-10">Please sign in to view your watchlist.</p>
-        ) : loading ? (
-          <p className="text-center mt-10 text-gray-500">Loading watchlist...</p>
-        ) : (
+        {!user ? <p className="text-center text-gray-500 mt-10">Please sign in to view your watchlist.</p> : loading ? <p className="text-center mt-10 text-gray-500">Loading watchlist...</p> : (
           <>
             {user && !loading && watchlist.length > 0 && (
               <SmartSearch watchlist={watchlist} setFilteredList={setSmartResults} />
             )}
             <h1 className="text-3xl font-bold mb-6 text-center">IMDb Watchlist</h1>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6 mb-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6 mb-8">
               <Input placeholder="Search movies..." value={search} onChange={(e) => setSearch(e.target.value)} />
 
               <div className="relative" ref={genresRef}>
@@ -154,12 +117,7 @@ export default function App() {
                   <div className="absolute mt-2 w-64 bg-white border rounded shadow-md z-50 max-h-60 overflow-auto p-3 grid grid-cols-2 gap-2 text-sm">
                     {uniqueGenres.map((g) => (
                       <label key={g} className="flex items-center gap-1 whitespace-nowrap">
-                        <input type="checkbox" checked={selectedGenres.includes(g)} onChange={(e) => {
-                          const checked = e.target.checked;
-                          setSelectedGenres((prev) =>
-                            checked ? [...prev, g] : prev.filter((genre) => genre !== g)
-                          );
-                        }} />
+                        <input type="checkbox" checked={selectedGenres.includes(g)} onChange={(e) => setSelectedGenres((prev) => e.target.checked ? [...prev, g] : prev.filter(x => x !== g))} />
                         {g}
                       </label>
                     ))}
@@ -175,12 +133,7 @@ export default function App() {
                   <div className="absolute mt-2 w-48 bg-white border rounded shadow-md z-50 max-h-60 overflow-auto p-3 grid grid-cols-1 gap-2 text-sm">
                     {uniqueTypes.map((type) => (
                       <label key={type} className="flex items-center gap-1 whitespace-nowrap">
-                        <input type="checkbox" checked={selectedTypes.includes(type)} onChange={(e) => {
-                          const checked = e.target.checked;
-                          setSelectedTypes((prev) =>
-                            checked ? [...prev, type] : prev.filter((t) => t !== type)
-                          );
-                        }} />
+                        <input type="checkbox" checked={selectedTypes.includes(type)} onChange={(e) => setSelectedTypes((prev) => e.target.checked ? [...prev, type] : prev.filter(t => t !== type))} />
                         {type}
                       </label>
                     ))}
@@ -203,12 +156,10 @@ export default function App() {
 
               <div className="flex flex-col gap-1 text-sm">
                 <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={hideSeen} onChange={() => setHideSeen(!hideSeen)} />
-                  Hide Seen
+                  <input type="checkbox" checked={hideSeen} onChange={() => setHideSeen(!hideSeen)} /> Hide Seen
                 </label>
                 <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={recentOnly} onChange={() => setRecentOnly(!recentOnly)} />
-                  Recently Added (30d)
+                  <input type="checkbox" checked={recentOnly} onChange={() => setRecentOnly(!recentOnly)} /> Recently Added (30d)
                 </label>
               </div>
             </div>
@@ -219,46 +170,32 @@ export default function App() {
               </button>
             </div>
 
-            {filtered.length === 0 ? (
-              <p className="text-center text-gray-500 mt-10">No movies found.</p>
-            ) : (
+            {filtered.length === 0 ? <p className="text-center text-gray-500 mt-10">No movies found.</p> : (
               <div className="space-y-6">
                 {displayList.map((movie, idx) => (
                   <Card key={idx} className="flex bg-white rounded-sm border shadow p-4 gap-4">
-                    <img src={movie.poster} alt={`${movie.title} poster`} className="w-[48px] h-[72px] object-cover" />
+                    <img src={movie.poster} alt={movie.title} className="w-[48px] h-[72px] object-cover" />
                     <div className="flex-1">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
                         <h2 className="text-[16px] font-bold leading-tight">
-                          <a href={movie.link} target="_blank" rel="noopener noreferrer" className="hover:underline text-[#121212]">
-                            {idx + 1}. {movie.title}
-                          </a>
+                        <a
+  href={`https://www.imdb.com/title/${movie.imdbID || movie.imdbId}`}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="hover:underline text-[#121212]"
+>
+  {idx + 1}. {movie.title}
+</a>
                         </h2>
                         {movie.year && <span className="text-xs text-gray-600">{movie.year}</span>}
-                        {movie.runtimeMinutes && (
-                          <span className="text-xs text-gray-600">
-                            • {Math.floor(movie.runtimeMinutes / 60)}h {movie.runtimeMinutes % 60}m
-                          </span>
-                        )}
+                        {movie.runtimeMinutes && <span className="text-xs text-gray-600">• {Math.floor(movie.runtimeMinutes / 60)}h {movie.runtimeMinutes % 60}m</span>}
+                        {movie.type && <span className="text-xs bg-blue-100 text-blue-800 font-medium px-2 py-0.5 rounded-full">{movie.type}</span>}
                       </div>
                       <div className="flex gap-2 text-sm mb-1 items-center flex-wrap">
-                        {movie.imdbDisplay && (
-                          <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs font-semibold">
-                            IMDb: {movie.imdbDisplay}
-                          </span>
-                        )}
-                        {movie.rtRating && (
-                          <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-semibold">
-                            🍅 RT: {movie.rtRating}
-                          </span>
-                        )}
-                        {movie.metacriticRating && (
-                          <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-semibold">
-                            MC: {movie.metacriticRating}
-                          </span>
-                        )}
-                        {movie.genres && (
-                          <span className="text-gray-600 text-xs">{movie.genres}</span>
-                        )}
+                        {movie.imdbDisplay && <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs font-semibold">IMDb: {movie.imdbDisplay}</span>}
+                        {movie.rtRating && <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-semibold">🍅 RT: {movie.rtRating}</span>}
+                        {movie.metacriticRating && <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-semibold">MC: {movie.metacriticRating}</span>}
+                        {movie.genres && <span className="text-gray-600 text-xs">{movie.genres}</span>}
                       </div>
                       {movie.plot && <p className="text-sm text-gray-700 mb-2">{movie.plot}</p>}
                       <label className="inline-flex items-center gap-2 mt-2 text-sm">
