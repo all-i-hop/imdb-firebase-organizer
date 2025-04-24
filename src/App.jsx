@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { auth, googleProvider, db } from "@/lib/firebaseConfig";
@@ -21,6 +21,22 @@ export default function App() {
   const [smartResults, setSmartResults] = useState([]);
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [showTypes, setShowTypes] = useState(false);
+
+  const genresRef = useRef();
+  const typesRef = useRef();
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (genresRef.current && !genresRef.current.contains(e.target)) {
+        setShowGenres(false);
+      }
+      if (typesRef.current && !typesRef.current.contains(e.target)) {
+        setShowTypes(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, setUser);
@@ -73,6 +89,15 @@ export default function App() {
     return diffDays <= 30;
   };
 
+  const clearFilters = () => {
+    setSelectedGenres([]);
+    setSelectedTypes([]);
+    setSearch("");
+    setReleaseStatus("all");
+    setHideSeen(false);
+    setRecentOnly(false);
+  };
+
   const filtered = (watchlist || [])
     .filter((movie) =>
       (movie.title || "").toLowerCase().includes(search.toLowerCase()) &&
@@ -118,10 +143,10 @@ export default function App() {
               <SmartSearch watchlist={watchlist} setFilteredList={setSmartResults} />
             )}
             <h1 className="text-3xl font-bold mb-6 text-center">IMDb Watchlist</h1>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6 mb-8">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6 mb-4">
               <Input placeholder="Search movies..." value={search} onChange={(e) => setSearch(e.target.value)} />
 
-              <div className="relative">
+              <div className="relative" ref={genresRef}>
                 <button onClick={() => setShowGenres(!showGenres)} className="border rounded px-4 py-2 bg-white text-sm shadow-sm">
                   Genres {selectedGenres.length > 0 ? `(${selectedGenres.length})` : ""}
                 </button>
@@ -142,7 +167,7 @@ export default function App() {
                 )}
               </div>
 
-              <div className="relative">
+              <div className="relative" ref={typesRef}>
                 <button onClick={() => setShowTypes(!showTypes)} className="border rounded px-4 py-2 bg-white text-sm shadow-sm">
                   Types {selectedTypes.length > 0 ? `(${selectedTypes.length})` : ""}
                 </button>
@@ -186,6 +211,12 @@ export default function App() {
                   Recently Added (30d)
                 </label>
               </div>
+            </div>
+
+            <div className="mb-6">
+              <button onClick={clearFilters} className="text-sm text-gray-600 border border-gray-300 px-3 py-1 rounded hover:bg-gray-100">
+                Clear Filters
+              </button>
             </div>
 
             {filtered.length === 0 ? (
