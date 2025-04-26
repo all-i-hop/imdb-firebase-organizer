@@ -92,7 +92,8 @@ export default function App() {
   const sortMovies = (a, b) => {
     switch (sortBy) {
       case "rating":
-        return (b.imdbRating || 0) - (a.imdbRating || 0);
+        return (b.imdbRating ||(movie.title || "").toLowerCase().includes(search.toLowerCase()) ||
+        0) - (a.imdbRating || 0);
       case "runtime":
         return (b.runtimeMinutes || 0) - (a.runtimeMinutes || 0);
       case "title":
@@ -134,7 +135,11 @@ export default function App() {
   
 
   const filtered = (watchlist || []).filter((movie) =>
-    (movie.title || "").toLowerCase().includes(search.toLowerCase()) &&
+    (
+      (movie.title || "").toLowerCase().includes(search.toLowerCase()) ||
+      (movie.cast || movie.actors || "").toLowerCase().includes(search.toLowerCase()) ||
+      (movie.director || (Array.isArray(movie.directors) ? movie.directors.join(', ') : movie.directors) || "").toLowerCase().includes(search.toLowerCase())
+    ) &&
     (selectedGenres.length === 0 || selectedGenres.some(g => (movie.genres || "").includes(g))) &&
     (selectedTypes.length === 0 || selectedTypes.includes(movie.type)) &&
     (selectedDecade === null || (movie.year && Math.floor(parseInt(movie.year, 10) / 10) * 10 === selectedDecade)) &&
@@ -143,6 +148,7 @@ export default function App() {
     (!hideSeen || !movie.seen) &&
     (!recentOnly || isRecent(movie.addedAt))
   ).sort(sortMovies);
+  
 
 
   const uniqueGenres = Array.from(new Set((watchlist || []).flatMap(m => (m.genres || "").split(", ")))).sort();
