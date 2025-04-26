@@ -21,6 +21,7 @@ export default function App() {
   const [smartResults, setSmartResults] = useState([]);
   const [showGenres, setShowGenres] = useState(false);
   const [showTypes, setShowTypes] = useState(false);
+  const [minRating, setMinRating] = useState(0);
 
   const genresRef = useRef();
   const typesRef = useRef();
@@ -71,10 +72,25 @@ export default function App() {
     setRecentOnly(false);
   };
 
+  const removeMovie = async (movie) => {
+    if (!user?.uid) return;
+    const ref = doc(db, "watchlists", user.uid);
+    const docSnap = await getDoc(ref);
+    if (!docSnap.exists()) return;
+    
+    const data = docSnap.data();
+    const updatedItems = data.items.filter((m) => m.title !== movie.title);
+  
+    await updateDoc(ref, { items: updatedItems });
+    setWatchlist(updatedItems);
+  };
+  
+
   const filtered = (watchlist || []).filter((movie) =>
     (movie.title || "").toLowerCase().includes(search.toLowerCase()) &&
     (selectedGenres.length === 0 || selectedGenres.some(g => (movie.genres || "").includes(g))) &&
     (selectedTypes.length === 0 || selectedTypes.includes(movie.type)) &&
+    (minRating === 0 || parseFloat(movie.imdbDisplay || 0) >= minRating) &&
     (releaseStatus === "released" ? isReleased(movie) : releaseStatus === "unreleased" ? !isReleased(movie) : true) &&
     (!hideSeen || !movie.seen) &&
     (!recentOnly || isRecent(movie.addedAt))
@@ -141,6 +157,18 @@ export default function App() {
                 )}
               </div>
 
+              <select
+                value={minRating}
+                onChange={(e) => setMinRating(Number(e.target.value))}
+                className="border rounded p-2 bg-white"
+              >
+                <option value={0}>All Ratings</option>
+                <option value={5}>5.0+ IMDb</option>
+                <option value={6}>6.0+ IMDb</option>
+                <option value={7}>7.0+ IMDb</option>
+                <option value={8}>8.0+ IMDb</option>
+              </select>
+
               <select className="border rounded p-2 bg-white" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
                 <option value="rating">Sort by Rating</option>
                 <option value="runtime">Sort by Runtime</option>
@@ -172,25 +200,50 @@ export default function App() {
 
             {filtered.length === 0 ? <p className="text-center text-gray-500 mt-10">No movies found.</p> : (
               <div className="space-y-6">
+                <div className="text-center text-sm text-gray-600 mb-6">
+  {filtered.length} / {watchlist.length} titles showing
+</div>
                 {displayList.map((movie, idx) => (
                   <Card key={idx} className="flex bg-white rounded-sm border shadow p-4 gap-4">
                     <img src={movie.poster} alt={movie.title} className="w-[48px] h-[72px] object-cover" />
                     <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <h2 className="text-[16px] font-bold leading-tight">
-                        <a
-  href={`https://www.imdb.com/title/${movie.imdbID || movie.imdbId}`}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="hover:underline text-[#121212]"
->
-  {idx + 1}. {movie.title}
-</a>
-                        </h2>
-                        {movie.year && <span className="text-xs text-gray-600">{movie.year}</span>}
-                        {movie.runtimeMinutes && <span className="text-xs text-gray-600">• {Math.floor(movie.runtimeMinutes / 60)}h {movie.runtimeMinutes % 60}m</span>}
-                        {movie.type && <span className="text-xs bg-blue-100 text-blue-800 font-medium px-2 py-0.5 rounded-full">{movie.type}</span>}
-                      </div>
+                      <div className="flex justify-between items-start mb-1">
+    <div className="flex flex-wrap items-center gap-2">
+      <h2 className="text-[16px] font-bold leading-tight">
+        <a
+          href={`https://www.imdb.com/title/${movie.imdbID || movie.imdbId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:underline text-[#121212]"
+        >
+          {idx + 1}. {movie.title}
+        </a>
+      </h2>
+      {movie.year && <span className="text-xs text-gray-600">{movie.year}</span>}
+      {movie.runtimeMinutes && (
+        <span className="text-xs text-gray-600">
+          • {Math.floor(movie.runtimeMinutes / 60)}h {movie.runtimeMinutes % 60}m
+        </span>
+      )}
+      {movie.type && (
+        <span className="text-xs bg-blue-100 text-blue-800 font-medium px-2 py-0.5 rounded-full">
+          {movie.type}
+        </span>
+      )}
+    </div>
+
+    <button
+      onClick={() => {
+        if (confirm(`Are you sure you want to remove "${movie.title}"?`)) {
+          removeMovie(movie);
+        }
+      }}
+      className="text-red-500 text-xs hover:underline"
+    >
+      ❌ Remove
+    </button>
+  </div>
+
                       <div className="flex gap-2 text-sm mb-1 items-center flex-wrap">
                         {movie.imdbDisplay && <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs font-semibold">IMDb: {movie.imdbDisplay}</span>}
                         {movie.rtRating && <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-semibold">🍅 RT: {movie.rtRating}</span>}
