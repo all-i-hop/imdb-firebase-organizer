@@ -22,6 +22,8 @@ export default function App() {
   const [showGenres, setShowGenres] = useState(false);
   const [showTypes, setShowTypes] = useState(false);
   const [minRating, setMinRating] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [titlesPerPage, setTitlesPerPage] = useState(20); // default to 20
 
   const genresRef = useRef();
   const typesRef = useRef();
@@ -96,11 +98,17 @@ export default function App() {
     (!recentOnly || isRecent(movie.addedAt))
   ).sort(sortMovies);
 
+
   const uniqueGenres = Array.from(new Set((watchlist || []).flatMap(m => (m.genres || "").split(", ")))).sort();
   const uniqueTypes = Array.from(new Set((watchlist || []).map(m => m.type).filter(Boolean))).sort();
 
   const displayList = smartResults.length ? smartResults : filtered;
 
+  const indexOfLast = currentPage * titlesPerPage;
+  const indexOfFirst = indexOfLast - titlesPerPage;
+  const currentTitles = displayList.slice(indexOfFirst, indexOfLast);
+
+  
   return (
     <div className="min-h-screen bg-[#f5f5f5] text-[#121212] px-4 py-8 font-sans">
       <div className="max-w-6xl mx-auto">
@@ -156,7 +164,18 @@ export default function App() {
                   </div>
                 )}
               </div>
-
+              <select
+                value={titlesPerPage}
+                onChange={(e) => {
+                  setTitlesPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="border rounded p-2 bg-white text-sm"
+              >
+                <option value={10}>10 titles per page</option>
+                <option value={20}>20 titles per page</option>
+                <option value={50}>50 titles per page</option>
+              </select>
               <select
                 value={minRating}
                 onChange={(e) => setMinRating(Number(e.target.value))}
@@ -201,9 +220,9 @@ export default function App() {
             {filtered.length === 0 ? <p className="text-center text-gray-500 mt-10">No movies found.</p> : (
               <div className="space-y-6">
                 <div className="text-center text-sm text-gray-600 mb-6">
-  {filtered.length} / {watchlist.length} titles showing
-</div>
-                {displayList.map((movie, idx) => (
+                  {filtered.length} / {watchlist.length} titles showing
+                </div>
+                {currentTitles.map((movie, idx) => (
                   <Card key={idx} className="flex bg-white rounded-sm border shadow p-4 gap-4">
                     <img src={movie.poster} alt={movie.title} className="w-[48px] h-[72px] object-cover" />
                     <div className="flex-1">
@@ -258,6 +277,27 @@ export default function App() {
                     </div>
                   </Card>
                 ))}
+                <div className="flex justify-center items-center gap-2 mt-8">
+  <button
+    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+    disabled={currentPage === 1}
+    className="px-3 py-1 border rounded disabled:opacity-50"
+  >
+    Prev
+  </button>
+
+  <span className="text-sm">
+    Page {currentPage} of {Math.ceil(displayList.length / titlesPerPage)}
+  </span>
+
+  <button
+    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, Math.ceil(displayList.length / titlesPerPage)))}
+    disabled={currentPage === Math.ceil(displayList.length / titlesPerPage)}
+    className="px-3 py-1 border rounded disabled:opacity-50"
+  >
+    Next
+  </button>
+</div>
               </div>
             )}
           </>
