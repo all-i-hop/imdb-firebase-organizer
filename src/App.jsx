@@ -9,6 +9,41 @@ import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { Link } from "react-router-dom";
 import SmartSearch from "@/components/SmartSearch";
 
+function CastWithExpand({ castString }) {
+  const [expanded, setExpanded] = useState(false);
+  const actors = castString.split(", ");
+
+  const displayedCast = expanded ? actors : actors.slice(0, 3);
+  const isExpandable = actors.length > 3;
+
+  return (
+    <span className="inline-block transition-all duration-300">
+      {displayedCast.map((actor, index) => (
+        <a
+          key={index}
+          href={`https://www.imdb.com/find?q=${encodeURIComponent(actor)}&s=nm`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:underline mr-2"
+        >
+          {actor}
+        </a>
+      ))}
+      {isExpandable && (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            setExpanded(!expanded);
+          }}
+          className="text-gray-500 hover:text-gray-700 text-xs underline ml-1"
+        >
+          {expanded ? "Show Less" : "Show More"}
+        </button>
+      )}
+    </span>
+  );
+}
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [search, setSearch] = useState("");
@@ -322,17 +357,28 @@ export default function App() {
                     {/* Director */}
                     {(movie.director || movie.directors) && (
                       <p className="text-xs text-gray-600 mt-1">
-                        <span className="font-semibold">Director:</span> {movie.director || (Array.isArray(movie.directors) ? movie.directors.join(', ') : movie.directors)}
+                        <span className="font-semibold">Director:</span>{" "}
+                        <a
+                          href={`https://www.imdb.com/find?q=${encodeURIComponent(movie.director || (Array.isArray(movie.directors) ? movie.directors.join(', ') : movie.directors))}&s=nm`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          {movie.director || (Array.isArray(movie.directors) ? movie.directors.join(', ') : movie.directors)}
+                        </a>
                       </p>
                     )}
 
                     {/* Cast */}
                     {(movie.cast || movie.actors) && (
-                      <p className="text-xs text-gray-600 mt-1">
-                        <span className="font-semibold">Cast:</span> {movie.cast || movie.actors}
-                      </p>
-                    )}
-                
+                    <div className="text-xs text-gray-600 mt-1">
+                      <span className="font-semibold">Cast:</span>{" "}
+                      <span className="text-blue-600 hover:underline">
+                        <CastWithExpand castString={movie.cast || movie.actors} />
+                      </span>
+                    </div>
+                  )}
+
                     {/* Seen Toggle */}
                     <label className="inline-flex items-center gap-2 mt-2 text-sm">
                       <input
