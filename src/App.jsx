@@ -77,6 +77,8 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const [titlesPerPage, setTitlesPerPage] = useState(20); // default to 20
   const [selectedDecade, setSelectedDecade] = useState(null); // Decade filter
+  const [selectedMovies, setSelectedMovies] = useState([]);
+
 
 
   const genresRef = useRef();
@@ -104,6 +106,38 @@ export default function App() {
     );
     await updateDoc(ref, { items: updatedItems });
     setWatchlist(updatedItems);
+  };
+
+  const markSelectedAsSeen = async () => {
+    if (!user?.uid) return;
+    const ref = doc(db, "watchlists", user.uid);
+    const docSnap = await getDoc(ref);
+    if (!docSnap.exists()) return;
+  
+    const data = docSnap.data();
+    const updatedItems = data.items.map((m) =>
+      selectedMovies.includes(m.title) ? { ...m, seen: true } : m
+    );
+  
+    await updateDoc(ref, { items: updatedItems });
+    setWatchlist(updatedItems);
+    setSelectedMovies([]);
+  };
+  
+  const removeSelectedMovies = async () => {
+    if (!user?.uid) return;
+    const ref = doc(db, "watchlists", user.uid);
+    const docSnap = await getDoc(ref);
+    if (!docSnap.exists()) return;
+  
+    const data = docSnap.data();
+    const updatedItems = data.items.filter(
+      (m) => !selectedMovies.includes(m.title)
+    );
+  
+    await updateDoc(ref, { items: updatedItems });
+    setWatchlist(updatedItems);
+    setSelectedMovies([]);
   };
 
   const sortMovies = (a, b) => {
@@ -387,154 +421,191 @@ export default function App() {
                   {filtered.length} / {watchlist.length} titles showing
                 </div>
                 {currentTitles.map((movie, idx) => (
-                <Card
-                  key={movie.imdbID || movie.title || idx} // <--- ADD key prop here!
-                  className="flex bg-white rounded-lg border shadow p-4 gap-4 transition-all duration-200 hover:shadow-lg"
-                >
-                  {/* Poster */}
-                  <img
-                    src={movie.poster}
-                    alt={movie.title}
-                    className="w-[80px] h-[120px] object-cover rounded-md"
-                  />
-                
-                  {/* Movie Info */}
-                  <div className="flex-1 flex flex-col justify-between">
-                    
-                    {/* Title + Remove */}
-                    <div className="flex justify-between items-start mb-2">
-                      <h2 className="text-lg font-bold leading-tight">
-                        <a
-                          href={`https://www.imdb.com/title/${movie.imdbID || movie.imdbId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:underline text-[#121212]"
-                        >
-                          {idx + 1}. {highlightMatch(movie.title, search)}
-                        </a>
-                      </h2>
-                
-                      {/* Remove Button (Top Right) */}
-                      <button
-                        onClick={() => {
-                          if (confirm(`Are you sure you want to remove "${movie.title}"?`)) {
-                            removeMovie(movie);
-                          }
-                        }}
-                        className="text-red-500 text-xs hover:underline"
-                      >
-                        ❌
-                      </button>
-                    </div>
-                
-                    {/* Meta info */}
-                    <div className="text-xs text-gray-600 mb-2 flex flex-wrap gap-2">
-                      {movie.year && <span>{movie.year}</span>}
-                      {movie.runtimeMinutes && (
-                        <span>• {Math.floor(movie.runtimeMinutes / 60)}h {movie.runtimeMinutes % 60}m</span>
-                      )}
-                      {movie.type && (
-                        <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full">
-                          {movie.type}
-                        </span>
-                      )}
-                    </div>
-                
-                    {/* Badges */}
-                    <div className="flex flex-wrap gap-2 text-xs mt-2">
-                      {movie.seen && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold">
-                          ✅ Seen
-                        </span>
-                      )}
-                      {movie.genres?.split(", ").map((g) => (
-                        <span key={g} className="px-2 py-0.5 rounded-full bg-gray-200 text-gray-800">
-                          {g}
-                        </span>
-                      ))}
-                    </div>
-                
-                    {/* Plot */}
-                    {movie.plot && (
-                      <p className="text-sm text-gray-700 mt-2 line-clamp-3">
-                        {highlightMatch(movie.plot, search)}
-                      </p>
-                    )}
-                
-                    {/* Director */}
-                    {(movie.director || movie.directors) && (
-                      <p className="text-xs text-gray-600 mt-1">
-                        <span className="font-semibold">Director:</span>{" "}
-                        <a
-                          href={`https://www.imdb.com/find?q=${encodeURIComponent(movie.director || (Array.isArray(movie.directors) ? movie.directors.join(', ') : movie.directors))}&s=nm`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
-                        >
-                          {highlightMatch(movie.director || (Array.isArray(movie.directors) ? movie.directors.join(', ') : movie.directors), search)}
-                        </a>
-                      </p>
-                    )}
-                
-                    {/* Cast */}
-                    {(movie.cast || movie.actors) && (
-                      <div className="text-xs text-gray-600 mt-1">
-                        <span className="font-semibold">Cast:</span>{" "}
-                        <span className="text-blue-600 hover:underline">
-                          <CastWithExpand castString={movie.cast || movie.actors} search={search} />
-                        </span>
-                      </div>
-                    )}
-                
-                    {/* Seen Toggle */}
-                    <label className="inline-flex items-center gap-2 mt-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={movie.seen || false}
-                        onChange={() => toggleSeen(movie)}
-                      />
-                      Mark as Seen
-                    </label>
-                  </div>
-                </Card>                
+               <Card
+               key={movie.imdbID || movie.title || idx}
+               className="flex bg-white rounded-lg border shadow p-4 gap-4 transition-all duration-200 hover:shadow-lg"
+             >
+               {/* Poster */}
+               <img
+                 src={movie.poster}
+                 alt={movie.title}
+                 className="w-[80px] h-[120px] object-cover rounded-md"
+               />
+             
+               {/* Movie Info */}
+               <div className="flex-1 flex flex-col justify-between">
+             
+                 {/* Title Row: Checkbox + Title + Remove */}
+                 <div className="flex justify-between items-start mb-2">
+                   {/* Left: Checkbox + Title */}
+                   <div className="flex items-center gap-2">
+                     {/* Select Checkbox */}
+                     <input
+                       type="checkbox"
+                       checked={selectedMovies.includes(movie.title)}
+                       onChange={(e) => {
+                         if (e.target.checked) {
+                           setSelectedMovies((prev) => [...prev, movie.title]);
+                         } else {
+                           setSelectedMovies((prev) =>
+                             prev.filter((title) => title !== movie.title)
+                           );
+                         }
+                       }}
+                     />
+                     {/* Title */}
+                     <h2 className="text-lg font-bold leading-tight">
+                       <a
+                         href={`https://www.imdb.com/title/${movie.imdbID || movie.imdbId}`}
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         className="hover:underline text-[#121212]"
+                       >
+                         {idx + 1}. {highlightMatch(movie.title, search)}
+                       </a>
+                     </h2>
+                   </div>
+             
+                   {/* Right: Remove Button */}
+                   <button
+                     onClick={() => {
+                       if (confirm(`Are you sure you want to remove "${movie.title}"?`)) {
+                         removeMovie(movie);
+                       }
+                     }}
+                     className="text-red-500 text-lg hover:underline"
+                     title="Remove from watchlist"
+                   >
+                     ❌
+                   </button>
+                 </div>
+             
+                 {/* Meta Info */}
+                 <div className="text-xs text-gray-600 mb-2 flex flex-wrap gap-2">
+                   {movie.year && <span>{movie.year}</span>}
+                   {movie.runtimeMinutes && (
+                     <span>• {Math.floor(movie.runtimeMinutes / 60)}h {movie.runtimeMinutes % 60}m</span>
+                   )}
+                   {movie.type && (
+                     <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full">
+                       {movie.type}
+                     </span>
+                   )}
+                 </div>
+             
+                 {/* Badges */}
+                 <div className="flex flex-wrap gap-2 text-xs mt-2">
+                   {movie.seen && (
+                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold">
+                       ✅ Seen
+                     </span>
+                   )}
+                   {movie.genres?.split(", ").map((g) => (
+                     <span key={g} className="px-2 py-0.5 rounded-full bg-gray-200 text-gray-800">
+                       {g}
+                     </span>
+                   ))}
+                 </div>
+             
+                 {/* Plot */}
+                 {movie.plot && (
+                   <p className="text-sm text-gray-700 mt-2 line-clamp-3">
+                     {highlightMatch(movie.plot, search)}
+                   </p>
+                 )}
+             
+                 {/* Director */}
+                 {(movie.director || movie.directors) && (
+                   <p className="text-xs text-gray-600 mt-1">
+                     <span className="font-semibold">Director:</span>{" "}
+                     <a
+                       href={`https://www.imdb.com/find?q=${encodeURIComponent(movie.director || (Array.isArray(movie.directors) ? movie.directors.join(', ') : movie.directors))}&s=nm`}
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       className="text-blue-600 hover:underline"
+                     >
+                       {highlightMatch(movie.director || (Array.isArray(movie.directors) ? movie.directors.join(', ') : movie.directors), search)}
+                     </a>
+                   </p>
+                 )}
+             
+                 {/* Cast */}
+                 {(movie.cast || movie.actors) && (
+                   <div className="text-xs text-gray-600 mt-1">
+                     <span className="font-semibold">Cast:</span>{" "}
+                     <span className="text-blue-600 hover:underline">
+                       <CastWithExpand castString={movie.cast || movie.actors} search={search} />
+                     </span>
+                   </div>
+                 )}
+             
+                 {/* Seen Toggle */}
+                 <label className="inline-flex items-center gap-2 mt-2 text-sm">
+                   <input
+                     type="checkbox"
+                     checked={movie.seen || false}
+                     onChange={() => toggleSeen(movie)}
+                   />
+                   Mark as Seen
+                 </label>
+             
+               </div>
+             </Card>
+                             
                 
                 ))}
-<div className="flex justify-center items-center gap-2 mt-8 flex-wrap">
+              <div className="flex justify-center items-center gap-2 mt-8 flex-wrap">
 
-{/* Prev Button */}
-<button
-  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-  disabled={currentPage === 1}
-  className="px-3 py-1 border rounded disabled:opacity-50"
->
-  Prev
-</button>
+              {/* Prev Button */}
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border rounded disabled:opacity-50"
+              >
+                Prev
+              </button>
 
-{/* Page Numbers */}
-{Array.from({ length: Math.ceil(displayList.length / titlesPerPage) }, (_, idx) => (
-  <button
-    key={idx}
-    onClick={() => setCurrentPage(idx + 1)}
-    className={`px-3 py-1 border rounded ${currentPage === idx + 1 ? "bg-gray-200 font-semibold" : ""}`}
-  >
-    {idx + 1}
-  </button>
-))}
+              {/* Page Numbers */}
+              {Array.from({ length: Math.ceil(displayList.length / titlesPerPage) }, (_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentPage(idx + 1)}
+                  className={`px-3 py-1 border rounded ${currentPage === idx + 1 ? "bg-gray-200 font-semibold" : ""}`}
+                >
+                  {idx + 1}
+                </button>
+              ))}
 
-{/* Next Button */}
-<button
-  onClick={() =>
-    setCurrentPage((prev) =>
-      Math.min(prev + 1, Math.ceil(displayList.length / titlesPerPage))
-    )
-  }
-  disabled={currentPage === Math.ceil(displayList.length / titlesPerPage)}
-  className="px-3 py-1 border rounded disabled:opacity-50"
->
-  Next
-</button>
+              {/* Next Button */}
+              <button
+                onClick={() =>
+                  setCurrentPage((prev) =>
+                    Math.min(prev + 1, Math.ceil(displayList.length / titlesPerPage))
+                  )
+                }
+                disabled={currentPage === Math.ceil(displayList.length / titlesPerPage)}
+                className="px-3 py-1 border rounded disabled:opacity-50"
+              >
+                Next
+              </button>
 
-</div>
+              </div>
+              </div>
+            )}
+            {selectedMovies.length > 0 && (
+              <div className="flex justify-center gap-4 mt-6">
+                <button
+                  onClick={markSelectedAsSeen}
+                  className="px-4 py-2 text-sm border rounded bg-green-100 text-green-800 hover:bg-green-200"
+                >
+                  Mark Selected as Seen
+                </button>
+                <button
+                  onClick={removeSelectedMovies}
+                  className="px-4 py-2 text-sm border rounded bg-red-100 text-red-800 hover:bg-red-200"
+                >
+                  Remove Selected
+                </button>
               </div>
             )}
           </>
