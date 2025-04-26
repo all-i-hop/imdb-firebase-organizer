@@ -24,6 +24,8 @@ export default function App() {
   const [minRating, setMinRating] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [titlesPerPage, setTitlesPerPage] = useState(20); // default to 20
+  const [selectedDecade, setSelectedDecade] = useState(null); // Decade filter
+
 
   const genresRef = useRef();
   const typesRef = useRef();
@@ -92,6 +94,7 @@ export default function App() {
     (movie.title || "").toLowerCase().includes(search.toLowerCase()) &&
     (selectedGenres.length === 0 || selectedGenres.some(g => (movie.genres || "").includes(g))) &&
     (selectedTypes.length === 0 || selectedTypes.includes(movie.type)) &&
+    (selectedDecade === null || (movie.year && Math.floor(parseInt(movie.year, 10) / 10) * 10 === selectedDecade)) &&
     (minRating === 0 || parseFloat(movie.imdbDisplay || 0) >= minRating) &&
     (releaseStatus === "released" ? isReleased(movie) : releaseStatus === "unreleased" ? !isReleased(movie) : true) &&
     (!hideSeen || !movie.seen) &&
@@ -107,6 +110,17 @@ export default function App() {
   const indexOfLast = currentPage * titlesPerPage;
   const indexOfFirst = indexOfLast - titlesPerPage;
   const currentTitles = displayList.slice(indexOfFirst, indexOfLast);
+
+  const availableDecades = Array.from(
+    new Set(
+      (watchlist || []).map((movie) => {
+        if (!movie.year) return null;
+        const yearNum = parseInt(movie.year, 10);
+        if (isNaN(yearNum)) return null;
+        return Math.floor(yearNum / 10) * 10;
+      }).filter(Boolean)
+    )
+  ).sort((a, b) => a - b);
 
   
   return (
@@ -164,6 +178,19 @@ export default function App() {
                   </div>
                 )}
               </div>
+              <select
+                value={selectedDecade || ""}
+                onChange={(e) => setSelectedDecade(e.target.value ? Number(e.target.value) : null)}
+                className="border rounded p-2 bg-white text-sm"
+              >
+                <option value="">All Decades</option>
+                {availableDecades.map((decade) => (
+                  <option key={decade} value={decade}>
+                    {decade}s
+                  </option>
+                ))}
+              </select>
+
               <select
                 value={titlesPerPage}
                 onChange={(e) => {
