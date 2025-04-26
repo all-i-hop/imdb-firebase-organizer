@@ -91,13 +91,21 @@ export default function App() {
 
   const sortMovies = (a, b) => {
     switch (sortBy) {
-      case "rating": return (b.imdbRating || 0) - (a.imdbRating || 0);
-      case "runtime": return (b.runtimeMinutes || 0) - (a.runtimeMinutes || 0);
-      case "title": return a.title.localeCompare(b.title);
-      case "recent": return new Date(b.addedAt || 0) - new Date(a.addedAt || 0);
-      default: return 0;
+      case "rating":
+        return (b.imdbRating || 0) - (a.imdbRating || 0);
+      case "runtime":
+        return (b.runtimeMinutes || 0) - (a.runtimeMinutes || 0);
+      case "title":
+        return (a.title || "").localeCompare(b.title || "");
+      case "year":
+        return (parseInt(b.year) || 0) - (parseInt(a.year) || 0); // Newest first
+      case "oldest":
+        return (parseInt(a.year) || 0) - (parseInt(b.year) || 0); // Oldest first
+      default:
+        return 0;
     }
   };
+  
 
   const isReleased = (movie) => new Date(movie.releaseDate) <= new Date();
   const isRecent = (d) => d && (new Date() - new Date(d)) / 86400000 <= 30;
@@ -250,11 +258,16 @@ export default function App() {
                 <option value={8}>8.0+ IMDb</option>
               </select>
 
-              <select className="border rounded p-2 bg-white" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                <option value="rating">Sort by Rating</option>
-                <option value="runtime">Sort by Runtime</option>
-                <option value="title">Sort by Title</option>
-                <option value="recent">Sort by Recently Added</option>
+              <select
+                className="border rounded p-2 bg-white text-sm"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="rating">Sort by IMDb Rating</option>
+                <option value="runtime">Sort by Runtime (Longest First)</option>
+                <option value="title">Sort Alphabetically</option>
+                <option value="year">Sort by Year (Newest First)</option>
+                <option value="oldest">Sort by Year (Oldest First)</option>
               </select>
 
               <select className="border rounded p-2 bg-white" value={releaseStatus} onChange={(e) => setReleaseStatus(e.target.value)}>
@@ -338,10 +351,11 @@ export default function App() {
                     {/* Badges */}
                     <div className="flex flex-wrap gap-2 text-xs mt-2">
                       {movie.seen && (
-                        <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold">
-                          Seen
-                        </span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold">
+                        ✅ Seen
+                      </span>
                       )}
+
                       {movie.genres?.split(", ").map((g) => (
                         <span key={g} className="px-2 py-0.5 rounded-full bg-gray-200 text-gray-800">
                           {g}
