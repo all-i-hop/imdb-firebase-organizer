@@ -205,114 +205,181 @@ export default function App() {
 
         {!user ? <p className="text-center text-gray-500 mt-10">Please sign in to view your watchlist.</p> : loading ? <p className="text-center mt-10 text-gray-500">Loading watchlist...</p> : (
           <>
-            {user && !loading && watchlist.length > 0 && (
-              <SmartSearch watchlist={watchlist} setFilteredList={setSmartResults} />
-            )}
-            <h1 className="text-3xl font-bold mb-6 text-center">IMDb Watchlist</h1>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6 mb-8">
-              <Input placeholder="Search movies..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            {/* === Smart Search === */}
+<div className="flex flex-col gap-6 mb-8 items-center">
+  <SmartSearch watchlist={watchlist} setFilteredList={setSmartResults} />
 
-              <div className="relative" ref={genresRef}>
-                <button onClick={() => setShowGenres(!showGenres)} className="border rounded px-4 py-2 bg-white text-sm shadow-sm">
-                  Genres {selectedGenres.length > 0 ? `(${selectedGenres.length})` : ""}
-                </button>
-                {showGenres && (
-                  <div className="absolute mt-2 w-64 bg-white border rounded shadow-md z-50 max-h-60 overflow-auto p-3 grid grid-cols-2 gap-2 text-sm">
-                    {uniqueGenres.map((g) => (
-                      <label key={g} className="flex items-center gap-1 whitespace-nowrap">
-                        <input type="checkbox" checked={selectedGenres.includes(g)} onChange={(e) => setSelectedGenres((prev) => e.target.checked ? [...prev, g] : prev.filter(x => x !== g))} />
-                        {g}
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
+  {/* Title, Cast, Director Search */}
+  <Input
+    placeholder="Search title, cast, or director..."
+    value={search}
+    onChange={(e) => {
+      setSearch(e.target.value);
+      setCurrentPage(1);
+    }}
+    className="w-full max-w-md p-2 text-sm border rounded shadow-sm"
+  />
+</div>
 
-              <div className="relative" ref={typesRef}>
-                <button onClick={() => setShowTypes(!showTypes)} className="border rounded px-4 py-2 bg-white text-sm shadow-sm">
-                  Types {selectedTypes.length > 0 ? `(${selectedTypes.length})` : ""}
-                </button>
-                {showTypes && (
-                  <div className="absolute mt-2 w-48 bg-white border rounded shadow-md z-50 max-h-60 overflow-auto p-3 grid grid-cols-1 gap-2 text-sm">
-                    {uniqueTypes.map((type) => (
-                      <label key={type} className="flex items-center gap-1 whitespace-nowrap">
-                        <input type="checkbox" checked={selectedTypes.includes(type)} onChange={(e) => setSelectedTypes((prev) => e.target.checked ? [...prev, type] : prev.filter(t => t !== type))} />
-                        {type}
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <select
-                value={selectedDecade || ""}
-                onChange={(e) => setSelectedDecade(e.target.value ? Number(e.target.value) : null)}
-                className="border rounded p-2 bg-white text-sm"
-              >
-                <option value="">All Decades</option>
-                {availableDecades.map((decade) => (
-                  <option key={decade} value={decade}>
-                    {decade}s
-                  </option>
-                ))}
-              </select>
+{/* === Filters Section === */}
+<div className="bg-white border rounded-lg shadow-sm p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
 
-              <select
-                value={titlesPerPage}
-                onChange={(e) => {
-                  setTitlesPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="border rounded p-2 bg-white text-sm"
-              >
-                <option value={10}>10 titles per page</option>
-                <option value={20}>20 titles per page</option>
-                <option value={50}>50 titles per page</option>
-              </select>
-              <select
-                value={minRating}
-                onChange={(e) => setMinRating(Number(e.target.value))}
-                className="border rounded p-2 bg-white"
-              >
-                <option value={0}>All Ratings</option>
-                <option value={5}>5.0+ IMDb</option>
-                <option value={6}>6.0+ IMDb</option>
-                <option value={7}>7.0+ IMDb</option>
-                <option value={8}>8.0+ IMDb</option>
-              </select>
+  {/* Genres Dropdown */}
+  <div className="relative" ref={genresRef}>
+    <button
+      onClick={() => setShowGenres(!showGenres)}
+      className="w-full p-2 text-sm border rounded hover:bg-gray-50 text-left"
+    >
+      Genres {selectedGenres.length > 0 ? `(${selectedGenres.length})` : ""}
+    </button>
+    {showGenres && (
+      <div className="absolute mt-2 w-full bg-white border rounded shadow-md max-h-48 overflow-auto p-3 text-sm z-50">
+        {uniqueGenres.map((g) => (
+          <label key={g} className="flex items-center gap-1 mb-1">
+            <input
+              type="checkbox"
+              checked={selectedGenres.includes(g)}
+              onChange={(e) =>
+                setSelectedGenres((prev) =>
+                  e.target.checked
+                    ? [...prev, g]
+                    : prev.filter((genre) => genre !== g)
+                )
+              }
+            />
+            {g}
+          </label>
+        ))}
+      </div>
+    )}
+  </div>
 
-              <select
-                className="border rounded p-2 bg-white text-sm"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-              >
-                <option value="rating">Sort by IMDb Rating</option>
-                <option value="runtime">Sort by Runtime (Longest First)</option>
-                <option value="title">Sort Alphabetically</option>
-                <option value="year">Sort by Year (Newest First)</option>
-                <option value="oldest">Sort by Year (Oldest First)</option>
-              </select>
+  {/* Types Dropdown */}
+  <div className="relative" ref={typesRef}>
+    <button
+      onClick={() => setShowTypes(!showTypes)}
+      className="w-full p-2 text-sm border rounded hover:bg-gray-50 text-left"
+    >
+      Types {selectedTypes.length > 0 ? `(${selectedTypes.length})` : ""}
+    </button>
+    {showTypes && (
+      <div className="absolute mt-2 w-full bg-white border rounded shadow-md max-h-48 overflow-auto p-3 text-sm z-50">
+        {uniqueTypes.map((type) => (
+          <label key={type} className="flex items-center gap-1 mb-1">
+            <input
+              type="checkbox"
+              checked={selectedTypes.includes(type)}
+              onChange={(e) =>
+                setSelectedTypes((prev) =>
+                  e.target.checked
+                    ? [...prev, type]
+                    : prev.filter((t) => t !== type)
+                )
+              }
+            />
+            {type}
+          </label>
+        ))}
+      </div>
+    )}
+  </div>
 
-              <select className="border rounded p-2 bg-white" value={releaseStatus} onChange={(e) => setReleaseStatus(e.target.value)}>
-                <option value="all">All Releases</option>
-                <option value="released">Released Only</option>
-                <option value="unreleased">Unreleased Only</option>
-              </select>
+  {/* Decades Select */}
+  <select
+    value={selectedDecade || ""}
+    onChange={(e) => setSelectedDecade(e.target.value ? Number(e.target.value) : null)}
+    className="w-full p-2 text-sm border rounded hover:shadow-sm hover:bg-gray-50"
+  >
+    <option value="">All Decades</option>
+    {availableDecades.map((decade) => (
+      <option key={decade} value={decade}>
+        {decade}s
+      </option>
+    ))}
+  </select>
 
-              <div className="flex flex-col gap-1 text-sm">
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={hideSeen} onChange={() => setHideSeen(!hideSeen)} /> Hide Seen
-                </label>
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={recentOnly} onChange={() => setRecentOnly(!recentOnly)} /> Recently Added (30d)
-                </label>
-              </div>
-            </div>
+  {/* Ratings Select */}
+  <select
+    value={minRating}
+    onChange={(e) => setMinRating(Number(e.target.value))}
+    className="w-full p-2 text-sm border rounded hover:shadow-sm hover:bg-gray-50"
+  >
+    <option value={0}>All Ratings</option>
+    <option value={5}>5.0+ IMDb</option>
+    <option value={6}>6.0+ IMDb</option>
+    <option value={7}>7.0+ IMDb</option>
+    <option value={8}>8.0+ IMDb</option>
+  </select>
 
-            <div className="mb-6">
-              <button onClick={clearFilters} className="text-sm text-gray-600 border border-gray-300 px-3 py-1 rounded hover:bg-gray-100">
-                Clear Filters
-              </button>
-            </div>
+  {/* Sort Select */}
+  <select
+    value={sortBy}
+    onChange={(e) => setSortBy(e.target.value)}
+    className="w-full p-2 text-sm border rounded hover:shadow-sm hover:bg-gray-50"
+  >
+    <option value="rating">Sort by IMDb Rating</option>
+    <option value="runtime">Sort by Runtime (Longest First)</option>
+    <option value="title">Sort Alphabetically</option>
+    <option value="year">Sort by Newest</option>
+    <option value="oldest">Sort by Oldest</option>
+  </select>
+
+  {/* Release Status Select */}
+  <select
+    value={releaseStatus}
+    onChange={(e) => setReleaseStatus(e.target.value)}
+    className="w-full p-2 text-sm border rounded hover:shadow-sm hover:bg-gray-50"
+  >
+    <option value="all">All Releases</option>
+    <option value="released">Released Only</option>
+    <option value="unreleased">Unreleased Only</option>
+  </select>
+
+  {/* Titles Per Page Select */}
+  <select
+    value={titlesPerPage}
+    onChange={(e) => {
+      setTitlesPerPage(Number(e.target.value));
+      setCurrentPage(1);
+    }}
+    className="w-full p-2 text-sm border rounded hover:shadow-sm hover:bg-gray-50"
+  >
+    <option value={10}>10 titles per page</option>
+    <option value={20}>20 titles per page</option>
+    <option value={50}>50 titles per page</option>
+  </select>
+
+  {/* Checkboxes */}
+  <div className="flex flex-col gap-2">
+    <label className="inline-flex items-center gap-2">
+      <input
+        type="checkbox"
+        checked={hideSeen}
+        onChange={() => setHideSeen(!hideSeen)}
+      />
+      Hide Seen
+    </label>
+    <label className="inline-flex items-center gap-2">
+      <input
+        type="checkbox"
+        checked={recentOnly}
+        onChange={() => setRecentOnly(!recentOnly)}
+      />
+      Recently Added (30d)
+    </label>
+  </div>
+</div>
+
+{/* === Clear Filters Button === */}
+<div className="flex justify-center mb-8">
+  <button
+    onClick={clearFilters}
+    className="px-4 py-2 text-sm border rounded hover:shadow-sm hover:bg-gray-50"
+  >
+    Clear Filters
+  </button>
+</div>
+
 
             {filtered.length === 0 ? <p className="text-center text-gray-500 mt-10">No movies found.</p> : (
               <div className="space-y-6">
@@ -432,26 +499,41 @@ export default function App() {
                 </Card>                
                 
                 ))}
-                <div className="flex justify-center items-center gap-2 mt-8">
-  <button
-    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-    disabled={currentPage === 1}
-    className="px-3 py-1 border rounded disabled:opacity-50"
-  >
-    Prev
-  </button>
+<div className="flex justify-center items-center gap-2 mt-8 flex-wrap">
 
-  <span className="text-sm">
-    Page {currentPage} of {Math.ceil(displayList.length / titlesPerPage)}
-  </span>
+{/* Prev Button */}
+<button
+  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+  disabled={currentPage === 1}
+  className="px-3 py-1 border rounded disabled:opacity-50"
+>
+  Prev
+</button>
 
+{/* Page Numbers */}
+{Array.from({ length: Math.ceil(displayList.length / titlesPerPage) }, (_, idx) => (
   <button
-    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, Math.ceil(displayList.length / titlesPerPage)))}
-    disabled={currentPage === Math.ceil(displayList.length / titlesPerPage)}
-    className="px-3 py-1 border rounded disabled:opacity-50"
+    key={idx}
+    onClick={() => setCurrentPage(idx + 1)}
+    className={`px-3 py-1 border rounded ${currentPage === idx + 1 ? "bg-gray-200 font-semibold" : ""}`}
   >
-    Next
+    {idx + 1}
   </button>
+))}
+
+{/* Next Button */}
+<button
+  onClick={() =>
+    setCurrentPage((prev) =>
+      Math.min(prev + 1, Math.ceil(displayList.length / titlesPerPage))
+    )
+  }
+  disabled={currentPage === Math.ceil(displayList.length / titlesPerPage)}
+  className="px-3 py-1 border rounded disabled:opacity-50"
+>
+  Next
+</button>
+
 </div>
               </div>
             )}
