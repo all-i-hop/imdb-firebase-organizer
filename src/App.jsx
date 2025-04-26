@@ -250,59 +250,101 @@ export default function App() {
                   {filtered.length} / {watchlist.length} titles showing
                 </div>
                 {currentTitles.map((movie, idx) => (
-                  <Card key={idx} className="flex bg-white rounded-sm border shadow p-4 gap-4">
-                    <img src={movie.poster} alt={movie.title} className="w-[48px] h-[72px] object-cover" />
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start mb-1">
-    <div className="flex flex-wrap items-center gap-2">
-      <h2 className="text-[16px] font-bold leading-tight">
-        <a
-          href={`https://www.imdb.com/title/${movie.imdbID || movie.imdbId}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:underline text-[#121212]"
-        >
-          {idx + 1}. {movie.title}
-        </a>
-      </h2>
-      {movie.year && <span className="text-xs text-gray-600">{movie.year}</span>}
-      {movie.runtimeMinutes && (
-        <span className="text-xs text-gray-600">
-          • {Math.floor(movie.runtimeMinutes / 60)}h {movie.runtimeMinutes % 60}m
-        </span>
-      )}
-      {movie.type && (
-        <span className="text-xs bg-blue-100 text-blue-800 font-medium px-2 py-0.5 rounded-full">
-          {movie.type}
-        </span>
-      )}
-    </div>
-
-    <button
-      onClick={() => {
-        if (confirm(`Are you sure you want to remove "${movie.title}"?`)) {
-          removeMovie(movie);
-        }
-      }}
-      className="text-red-500 text-xs hover:underline"
-    >
-      ❌ Remove
-    </button>
-  </div>
-
-                      <div className="flex gap-2 text-sm mb-1 items-center flex-wrap">
-                        {movie.imdbDisplay && <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs font-semibold">IMDb: {movie.imdbDisplay}</span>}
-                        {movie.rtRating && <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-semibold">🍅 RT: {movie.rtRating}</span>}
-                        {movie.metacriticRating && <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-semibold">MC: {movie.metacriticRating}</span>}
-                        {movie.genres && <span className="text-gray-600 text-xs">{movie.genres}</span>}
-                      </div>
-                      {movie.plot && <p className="text-sm text-gray-700 mb-2">{movie.plot}</p>}
-                      <label className="inline-flex items-center gap-2 mt-2 text-sm">
-                        <input type="checkbox" checked={movie.seen || false} onChange={() => toggleSeen(movie)} />
-                        Mark as Seen
-                      </label>
+                  <Card className="flex bg-white rounded-lg border shadow p-4 gap-4 transition-all duration-200 hover:shadow-lg">
+                  {/* Poster */}
+                  <img
+                    src={movie.poster}
+                    alt={movie.title}
+                    className="w-[80px] h-[120px] object-cover rounded-md"
+                  />
+                
+                  {/* Movie Info */}
+                  <div className="flex-1 flex flex-col justify-between">
+                    
+                    {/* Title + Remove */}
+                    <div className="flex justify-between items-start mb-2">
+                      <h2 className="text-lg font-bold leading-tight">
+                        <a
+                          href={`https://www.imdb.com/title/${movie.imdbID || movie.imdbId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:underline text-[#121212]"
+                        >
+                          {idx + 1}. {movie.title}
+                        </a>
+                      </h2>
+                
+                      {/* Remove Button (Top Right) */}
+                      <button
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to remove "${movie.title}"?`)) {
+                            removeMovie(movie);
+                          }
+                        }}
+                        className="text-red-500 text-xs hover:underline"
+                      >
+                        ❌
+                      </button>
                     </div>
-                  </Card>
+                
+                    {/* Meta info */}
+                    <div className="text-xs text-gray-600 mb-2 flex flex-wrap gap-2">
+                      {movie.year && <span>{movie.year}</span>}
+                      {movie.runtimeMinutes && (
+                        <span>• {Math.floor(movie.runtimeMinutes / 60)}h {movie.runtimeMinutes % 60}m</span>
+                      )}
+                      {movie.type && (
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full">
+                          {movie.type}
+                        </span>
+                      )}
+                    </div>
+                
+                    {/* Badges */}
+                    <div className="flex flex-wrap gap-2 text-xs mt-2">
+                      {movie.seen && (
+                        <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold">
+                          Seen
+                        </span>
+                      )}
+                      {movie.genres?.split(", ").map((g) => (
+                        <span key={g} className="px-2 py-0.5 rounded-full bg-gray-200 text-gray-800">
+                          {g}
+                        </span>
+                      ))}
+                    </div>
+                
+                    {/* Plot */}
+                    {movie.plot && (
+                      <p className="text-sm text-gray-700 mt-2 line-clamp-3">{movie.plot}</p>
+                    )}
+
+                    {/* Director */}
+                    {(movie.director || movie.directors) && (
+                      <p className="text-xs text-gray-600 mt-1">
+                        <span className="font-semibold">Director:</span> {movie.director || (Array.isArray(movie.directors) ? movie.directors.join(', ') : movie.directors)}
+                      </p>
+                    )}
+
+                    {/* Cast */}
+                    {(movie.cast || movie.actors) && (
+                      <p className="text-xs text-gray-600 mt-1">
+                        <span className="font-semibold">Cast:</span> {movie.cast || movie.actors}
+                      </p>
+                    )}
+                
+                    {/* Seen Toggle */}
+                    <label className="inline-flex items-center gap-2 mt-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={movie.seen || false}
+                        onChange={() => toggleSeen(movie)}
+                      />
+                      Mark as Seen
+                    </label>
+                  </div>
+                </Card>
+                
                 ))}
                 <div className="flex justify-center items-center gap-2 mt-8">
   <button
