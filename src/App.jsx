@@ -9,9 +9,9 @@ import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { Link } from "react-router-dom";
 import SmartSearch from "@/components/SmartSearch";
 
-function CastWithExpand({ castString }) {
+function CastWithExpand({ castString, search }) {
   const [expanded, setExpanded] = useState(false);
-  const actors = castString.split(", ");
+  const actors = (castString || "").split(", ");
 
   const displayedCast = expanded ? actors : actors.slice(0, 3);
   const isExpandable = actors.length > 3;
@@ -26,7 +26,7 @@ function CastWithExpand({ castString }) {
           rel="noopener noreferrer"
           className="text-blue-600 hover:underline mr-2"
         >
-          {actor}
+          {highlightMatch(actor, search)}
         </a>
       ))}
       {isExpandable && (
@@ -43,6 +43,23 @@ function CastWithExpand({ castString }) {
     </span>
   );
 }
+
+function highlightMatch(text, search) {
+  if (!search) return text;
+  const regex = new RegExp(`(${search})`, "gi");
+  const parts = (text || "").split(regex);
+  
+  return parts.map((part, index) =>
+    regex.test(part) ? (
+      <mark key={index} className="bg-yellow-200 text-black px-1 rounded">
+        {part}
+      </mark>
+    ) : (
+      part
+    )
+  );
+}
+
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -92,8 +109,7 @@ export default function App() {
   const sortMovies = (a, b) => {
     switch (sortBy) {
       case "rating":
-        return (b.imdbRating ||(movie.title || "").toLowerCase().includes(search.toLowerCase()) ||
-        0) - (a.imdbRating || 0);
+        return (b.imdbRating || 0) - (a.imdbRating || 0);
       case "runtime":
         return (b.runtimeMinutes || 0) - (a.runtimeMinutes || 0);
       case "title":
@@ -304,7 +320,10 @@ export default function App() {
                   {filtered.length} / {watchlist.length} titles showing
                 </div>
                 {currentTitles.map((movie, idx) => (
-                  <Card className="flex bg-white rounded-lg border shadow p-4 gap-4 transition-all duration-200 hover:shadow-lg">
+                <Card
+                  key={movie.imdbID || movie.title || idx} // <--- ADD key prop here!
+                  className="flex bg-white rounded-lg border shadow p-4 gap-4 transition-all duration-200 hover:shadow-lg"
+                >
                   {/* Poster */}
                   <img
                     src={movie.poster}
@@ -324,7 +343,7 @@ export default function App() {
                           rel="noopener noreferrer"
                           className="hover:underline text-[#121212]"
                         >
-                          {idx + 1}. {movie.title}
+                          {idx + 1}. {highlightMatch(movie.title, search)}
                         </a>
                       </h2>
                 
@@ -357,11 +376,10 @@ export default function App() {
                     {/* Badges */}
                     <div className="flex flex-wrap gap-2 text-xs mt-2">
                       {movie.seen && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold">
-                        ✅ Seen
-                      </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold">
+                          ✅ Seen
+                        </span>
                       )}
-
                       {movie.genres?.split(", ").map((g) => (
                         <span key={g} className="px-2 py-0.5 rounded-full bg-gray-200 text-gray-800">
                           {g}
@@ -371,9 +389,11 @@ export default function App() {
                 
                     {/* Plot */}
                     {movie.plot && (
-                      <p className="text-sm text-gray-700 mt-2 line-clamp-3">{movie.plot}</p>
+                      <p className="text-sm text-gray-700 mt-2 line-clamp-3">
+                        {highlightMatch(movie.plot, search)}
+                      </p>
                     )}
-
+                
                     {/* Director */}
                     {(movie.director || movie.directors) && (
                       <p className="text-xs text-gray-600 mt-1">
@@ -384,21 +404,21 @@ export default function App() {
                           rel="noopener noreferrer"
                           className="text-blue-600 hover:underline"
                         >
-                          {movie.director || (Array.isArray(movie.directors) ? movie.directors.join(', ') : movie.directors)}
+                          {highlightMatch(movie.director || (Array.isArray(movie.directors) ? movie.directors.join(', ') : movie.directors), search)}
                         </a>
                       </p>
                     )}
-
+                
                     {/* Cast */}
                     {(movie.cast || movie.actors) && (
-                    <div className="text-xs text-gray-600 mt-1">
-                      <span className="font-semibold">Cast:</span>{" "}
-                      <span className="text-blue-600 hover:underline">
-                        <CastWithExpand castString={movie.cast || movie.actors} />
-                      </span>
-                    </div>
-                  )}
-
+                      <div className="text-xs text-gray-600 mt-1">
+                        <span className="font-semibold">Cast:</span>{" "}
+                        <span className="text-blue-600 hover:underline">
+                          <CastWithExpand castString={movie.cast || movie.actors} search={search} />
+                        </span>
+                      </div>
+                    )}
+                
                     {/* Seen Toggle */}
                     <label className="inline-flex items-center gap-2 mt-2 text-sm">
                       <input
@@ -409,7 +429,7 @@ export default function App() {
                       Mark as Seen
                     </label>
                   </div>
-                </Card>
+                </Card>                
                 
                 ))}
                 <div className="flex justify-center items-center gap-2 mt-8">
